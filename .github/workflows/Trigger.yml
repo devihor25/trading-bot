@@ -1,0 +1,66 @@
+name: Manage Python Script
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose action'
+        required: true
+        default: 'start'
+        type: choice
+        options:
+          - start
+          - stop
+
+  schedule:
+    - cron: "0 23 * * 0-4"  # Schedule to run at 6 AM UTC+7 (11 PM UTC the previous day) from Monday to Friday
+    - cron: "0 20 * * 0-4"  # Schedule to run at 3 AM UTC+7 (8 PM UTC the previous day) from Monday to Friday
+
+jobs:
+  start:
+    if: github.event.inputs.action == 'start' || (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 1-5')
+    runs-on: self-hosted
+    timeout-minutes: 1200
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      #- name: Open Terminal
+      #  run: |
+      #    cmd /c start "" script.bat
+        
+      - name: Fetch updates from main branch
+        run: |
+          echo "Fetching updates from main branch..."
+          git fetch origin master
+
+      - name: Pull latest changes
+        run: |
+          echo "Pulling latest changes..."
+          git pull origin master
+
+      - name: Run Python script
+        run: |
+          echo "Running Python script..."
+          py main.py
+        continue-on-error: true  # Ensure the script runs even if there are errors
+
+  stop:
+    if: github.event.inputs.action == 'stop' || (github.event_name == 'schedule' && github.event.schedule == '0 20 * * 1-5')
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+      - name: Stop processes
+        run: |
+          echo "Stopping Python script..."
+          if (Get-Process -Name "python" -ErrorAction SilentlyContinue) {
+            Stop-Process -Name "python"
+          } else {
+            echo "No running script found"
+          }
+          echo "Stopping Terminal..."
+          if (Get-Process -Name "terminal64" -ErrorAction SilentlyContinue) {
+            Stop-Process -Name "terminal64"
+          } else {
+            echo "No running terminal64 found"
+          }
