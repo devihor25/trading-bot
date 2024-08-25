@@ -1,4 +1,4 @@
-name: Manage Python Script
+name: Auto Trading
 
 on:
   workflow_dispatch:
@@ -32,12 +32,12 @@ jobs:
       - name: Fetch updates from main branch
         run: |
           echo "Fetching updates from main branch..."
-          git fetch origin master
+          git fetch origin main
 
       - name: Pull latest changes
         run: |
           echo "Pulling latest changes..."
-          git pull origin master
+          git pull origin main
 
       - name: Run Python script
         run: |
