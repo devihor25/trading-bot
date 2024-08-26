@@ -6,19 +6,18 @@ import IndicatorCalculator as IC
 from datetime import datetime
 from datetime import timedelta
 import pytz
-import os
-import pickle
 import time
 import ModelGenerator as MG
 from sklearn.preprocessing import MinMaxScaler
 import OrderRequest as OR
 import Logger
 
-generate_model = False
-one_minute_model = "my_trained_model_1m_normalized.pkl"
+refresh_train_data = False
 polling_time = 180 #seconds
 suspend_time = 300 #seconds
 trade_waiting_time = 300
+train_data_output_file = "train_data.csv"
+test_data_output_file = "test_data.csv"
 
 if __name__ == "__main__":
     trade_manager = OR.MT_trade_manager()
@@ -40,14 +39,14 @@ if __name__ == "__main__":
     
     log_file_name = "log_session_" + (noww + timedelta(hours=4)).strftime("%H_%M_%S-%d_%m_%Y") + ".txt"
     logger = Logger.Logger(log_file_name)
-
-    if (generate_model):
-        train_data = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_from_train, date_to_train))
-        test_data = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_to_train, date_to))
-        MG.GenerateModel(train_data, test_data)
     
-    with open(one_minute_model, 'rb') as file:
-        my_model = pickle.load(file)
+    train_data = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_from_train, date_to_train))
+    test_data = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_to_train, date_to))
+    
+    if (refresh_train_data):
+        train_data.to_csv(train_data_output_file, sep=",")
+        test_data.to_csv(test_data_output_file, sep=",")
+    my_model = MG.GenerateModel(refresh_train_data)
         
     while True:
         log_list = []

@@ -18,7 +18,7 @@ on:
 
 jobs:
   start:
-    if: github.event.inputs.action == 'start' || (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 1-5')
+    if: github.event.inputs.action == 'start' || (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 0-4')
     runs-on: self-hosted
     timeout-minutes: 1200
     steps:
@@ -46,7 +46,7 @@ jobs:
         continue-on-error: true  # Ensure the script runs even if there are errors
 
   stop:
-    if: github.event.inputs.action == 'stop' || (github.event_name == 'schedule' && github.event.schedule == '0 20 * * 1-5')
+    if: github.event.inputs.action == 'stop' || (github.event_name == 'schedule' && github.event.schedule == '0 20 * * 0-4')
     runs-on: self-hosted
     timeout-minutes: 60
     steps:

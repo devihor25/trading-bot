@@ -109,7 +109,7 @@ class MT_trade_manager:
         buy_price = infor.ask
         sell_price = infor.bid
         self.spread = buy_price - sell_price
-        if offset < 1.2:  #take trade only when ATR >= 2 dollar
+        if offset < 1:  #take trade only when ATR >= 2 dollar
             return {"result" : False, "message" : f"Small ATR {offset:.3f} skip trade"}
 
         if adx < 20:  #adx should be > 20 to indicate strong trend

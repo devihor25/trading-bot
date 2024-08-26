@@ -6,17 +6,17 @@ import pickle
 import IndicatorCalculator as IC
 #import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
 from sklearn.preprocessing import MinMaxScaler
 import Logger
 
 
 sample_path = "manipulate.csv"
-retest = False
-out_put_model = "my_trained_model_1m_normalized.pkl"
-regression_sensitivity = 0.0
+train_data_output_file = "train_data.csv"
+test_data_output_file = "test_data.csv"
 
-def GenerateModel(train_data, test_data):
+def GenerateModel(refresh_train_data):
+    train_data = pd.read_csv(train_data_output_file)
+    test_data = pd.read_csv(test_data_output_file)
     test_data_manager = IC.IndicatorTable()
     train_data_manager = IC.IndicatorTable()
 
@@ -34,30 +34,24 @@ def GenerateModel(train_data, test_data):
     test_data_transform = scaler.fit_transform(test_data_manager.ExportData())
 
     # Train logistic regression model
-    if (retest):
-        with open(out_put_model, 'rb') as file:
-            model = pickle.load(file)
-    else:
-        model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
-        model.fit(train_data_trasform, train_data_output)
+    model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    model.fit(train_data_trasform, train_data_output)
 
     # Evaluate model
-    y_pred = model.predict(test_data_transform)
-    accuracy = (y_pred == test_data_output).mean()
-    print(f"ACCURACY: {accuracy}")
-    y_pred_proba = model.predict_proba(test_data_transform)
+    if (refresh_train_data):
+        y_pred = model.predict(test_data_transform)
+        accuracy = (y_pred == test_data_output).mean()
+        print(f"ACCURACY: {accuracy}")
+        y_pred_proba = model.predict_proba(test_data_transform)
 
-    test_data_manager.UpdatePrediction(y_pred, y_pred_proba)
+        test_data_manager.UpdatePrediction(y_pred, y_pred_proba)
     
-    output = test_data_manager.table.iloc[-1500:, :]
-    logger = Logger.Logger(sample_path)
-    logger.dump_dataframe(output)
-    output.to_csv(sample_path, sep=",")
+        output = test_data_manager.table.iloc[-3000:, :]
+        logger = Logger.Logger(sample_path)
+        logger.dump_dataframe(output)
+    #output.to_csv(sample_path, sep=",")
 
-    if (not retest):
-        with open(out_put_model, 'wb') as file:
-            pickle.dump(model, file)
-
+    return model
     # ======================== generating LSTM Model ========================
     features = train_data[IC.input_to_model].values
     # Normalize features to [0, 1] range
