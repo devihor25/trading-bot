@@ -80,21 +80,13 @@ class MT_trade_manager:
                 #return True
         return True
 
-    def validate_buy(self, pred, pred_proba):
-        if ((pred[-1] == 1) and (list(pred[-5:]).count(1) > 2)):
-            if (pred_proba[-2, 2] < pred_proba[-3, 2]):
-                buy_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 2])])
-                print(f"Buy probability reduced [{buy_rate}], skip executing")
-                return False
+    def validate_buy(self, pred, close, smooth_price):
+        if ((pred[-2] == 1) and (close < smooth_price)):
             return True
         return False
 
-    def validate_sell(self, pred, pred_proba):
-        if ((pred[-1] == -1) and (list(pred[-5:]).count(-1) > 2)):
-            if (pred_proba[-2, 0] < pred_proba[-3, 0]):
-                sell_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
-                print(f"Sell probability reduced [{sell_rate}], skip executing")
-                return False
+    def validate_sell(self, pred, close, smooth_price):
+        if ((pred[-2] == -1) and (close > smooth_price)):
             return True
         return False
 
@@ -103,17 +95,17 @@ class MT_trade_manager:
         # previous candle
         offset = dataframe.iloc[-2]['ATR']
         close = dataframe.iloc[-2]['close']
-        ema10 = dataframe.iloc[-2]['EMA10']
-        adx = dataframe.iloc[-2]['ADX']
+        smooth_price = dataframe.iloc[-2]['Smooth_price']
+        #adx = dataframe.iloc[-2]['ADX']
 
         buy_price = infor.ask
         sell_price = infor.bid
         self.spread = buy_price - sell_price
-        if offset < 1:  #take trade only when ATR >= 2 dollar
-            return {"result" : False, "message" : f"Small ATR {offset:.3f} skip trade"}
+        #if offset < 1:  #take trade only when ATR >= 2 dollar
+        #    return {"result" : False, "message" : f"Small ATR {offset:.3f} skip trade"}
 
-        if adx < 20:  #adx should be > 20 to indicate strong trend
-            return {"result" : False, "message" : f"Small ADX {adx:.3f} skip trade"}
+        #if adx < 20:  #adx should be > 20 to indicate strong trend
+        #    return {"result" : False, "message" : f"Small ADX {adx:.3f} skip trade"}
 
         if (self.spread > offset):
             guard_band = 2*self.spread
@@ -124,9 +116,9 @@ class MT_trade_manager:
         neutral_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 1])])
         sell_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
 
-        if (self.validate_buy(pred, pred_proba)):
-            if (close < ema10):
-                return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
+        if (self.validate_buy(pred, close, smooth_price)):
+            #if (close < ema10):
+            #    return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
             self.request_buy["price"] = buy_price
             self.request_buy["sl"] = buy_price - (1*guard_band) # 2 dollar please
             self.request_buy["tp"] = buy_price + (1.5*guard_band)
@@ -137,9 +129,9 @@ class MT_trade_manager:
             print(txt)
             return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Buy_rate" : {buy_rate}, "Neutral_rate" : {neutral_rate}, "Sell_rate" : {sell_rate}}}
 
-        elif (self.validate_sell(pred, pred_proba)):
-            if (close > ema10):
-                return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
+        elif (self.validate_sell(pred, close, smooth_price)):
+            #if (close > ema10):
+            #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
             self.request_sell["price"] = sell_price
             self.request_sell["sl"] = sell_price + (1*guard_band) # 2 dollar please
             self.request_sell["tp"] = sell_price - (1.5*guard_band)

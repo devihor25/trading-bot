@@ -13,7 +13,7 @@ import OrderRequest as OR
 import Logger
 
 refresh_train_data = False
-polling_time = 180 #seconds
+polling_time = 120 #seconds
 suspend_time = 300 #seconds
 trade_waiting_time = 300
 train_data_output_file = "train_data.csv"

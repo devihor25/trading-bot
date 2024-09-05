@@ -14,19 +14,39 @@ sample_path = "manipulate.csv"
 train_data_output_file = "train_data.csv"
 test_data_output_file = "test_data.csv"
 
+train_data_processed_output_file = "train_data_processed.csv"
+test_data_processed_output_file = "test_data_processed.csv"
+
 def GenerateModel(refresh_train_data):
-    train_data = pd.read_csv(train_data_output_file)
-    test_data = pd.read_csv(test_data_output_file)
+    
     test_data_manager = IC.IndicatorTable()
     train_data_manager = IC.IndicatorTable()
+    if (refresh_train_data):
+        train_data = pd.read_csv(train_data_output_file)
+        test_data = pd.read_csv(test_data_output_file)
 
-    test_data_manager.Calculate(test_data)
-    train_data_manager.Calculate(train_data)
+        test_data_manager.Calculate(test_data)
+        train_data_manager.Calculate(train_data)
     
-    test_data_output = test_data_manager.DataManipulate()
-    train_data_output = train_data_manager.DataManipulate()
-    
+        test_data_output = test_data_manager.DataManipulate()
+        train_data_output = train_data_manager.DataManipulate()
 
+        #logger = Logger.Logger(train_data_processed_output_file)
+        #logger.dump_dataframe(train_data_manager.table)
+
+        #logger = Logger.Logger(test_data_processed_output_file)
+        #logger.dump_dataframe(test_data_manager.table)
+    else:
+        test_data_table = pd.read_csv(test_data_processed_output_file)
+        train_data_table = pd.read_csv(train_data_processed_output_file)
+        
+        test_data_manager.ReuseTable(test_data_table)
+        train_data_manager.ReuseTable(train_data_table)
+        
+        test_data_output = test_data_manager.ReuseSignal()
+        train_data_output = train_data_manager.ReuseSignal()
+
+    
     # ======================== generating Logistic Regression Model ========================
     
     scaler = MinMaxScaler()
@@ -34,14 +54,15 @@ def GenerateModel(refresh_train_data):
     test_data_transform = scaler.fit_transform(test_data_manager.ExportData())
 
     # Train logistic regression model
-    model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    model = LogisticRegression(solver='lbfgs', max_iter=1000)
     model.fit(train_data_trasform, train_data_output)
 
     # Evaluate model
+    
+    y_pred = model.predict(test_data_transform)
+    accuracy = (y_pred == test_data_output).mean()
+    print(f"ACCURACY: {accuracy}")
     if (refresh_train_data):
-        y_pred = model.predict(test_data_transform)
-        accuracy = (y_pred == test_data_output).mean()
-        print(f"ACCURACY: {accuracy}")
         y_pred_proba = model.predict_proba(test_data_transform)
 
         test_data_manager.UpdatePrediction(y_pred, y_pred_proba)
