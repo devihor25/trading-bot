@@ -70,24 +70,36 @@ class MT_trade_manager:
                         profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp']))
                         self.logger.write_log(f"{self.now},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Buy_rate']},{self.order_taken[i]['Neutral_rate']},{self.order_taken[i]['Sell_rate']},Win,{profit}")
 
-        if (len(my_pos) > 0):
+        if (len(my_pos) > 1):
             return False
         if (len(self.order_taken) > 2):
             if (self.order_taken[-1]["Status"] == "Lose" and self.order_taken[-2]["Status"] == "Lose" and self.penalty == True):
                 print("2 losing streak, penalty 10m")
                 self.penalty = False
-                time.sleep(600)
+                #time.sleep(600)
                 #return True
         return True
 
-    def validate_buy(self, pred, close, smooth_price):
-        if ((pred[-2] == 1) and (close < smooth_price)):
-            return True
+    def validate_buy(self, pred, close, EMA50):
+        rate = '|'.join(f"{x}" for x in list(pred[-6:]))
+        filterList = ["1|0|1", "1|0|0|1"]
+        for filt in filterList:
+            if filt in rate:
+                return False
+        if ("0|1|1" in rate[:-2]):
+            if ((pred[-2] == 1) and (pred[-3] == 1) and (close > EMA50)):
+                return True
         return False
 
-    def validate_sell(self, pred, close, smooth_price):
-        if ((pred[-2] == -1) and (close > smooth_price)):
-            return True
+    def validate_sell(self, pred, close, EMA50):
+        rate = '|'.join(f"{x}" for x in list(pred[-6:]))
+        filterList = ["0|1|0", "0|1|1|0"]
+        for filt in filterList:
+            if filt in rate:
+                return False
+        if ("1|0|0" in rate[:-2]):
+            if ((pred[-2] == 0) and (pred[-3] == 0) and (close < EMA50)):
+                return True
         return False
 
     def check_for_trade(self, pred, pred_proba, dataframe):
@@ -95,7 +107,7 @@ class MT_trade_manager:
         # previous candle
         offset = dataframe.iloc[-2]['ATR']
         close = dataframe.iloc[-2]['close']
-        smooth_price = dataframe.iloc[-2]['Smooth_price']
+        EMA50 = dataframe.iloc[-2]['EMA50']
         #adx = dataframe.iloc[-2]['ADX']
 
         buy_price = infor.ask
@@ -112,11 +124,10 @@ class MT_trade_manager:
         else:
             guard_band = offset
         
-        buy_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 2])])
-        neutral_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 1])])
-        sell_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
+        up_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 1])])
+        down_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
 
-        if (self.validate_buy(pred, close, smooth_price)):
+        if (self.validate_buy(pred, close, EMA50)):
             #if (close < ema10):
             #    return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
             self.request_buy["price"] = buy_price
@@ -125,11 +136,11 @@ class MT_trade_manager:
             result = MT5.order_send(self.request_buy)
             txt = f"Order status: {result}"
             if result.comment == 'Request executed':
-                self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Buy_rate" : {buy_rate}, "Neutral_rate" : {neutral_rate}, "Sell_rate" : {sell_rate}})
+                self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
             print(txt)
-            return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Buy_rate" : {buy_rate}, "Neutral_rate" : {neutral_rate}, "Sell_rate" : {sell_rate}}}
+            return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}}}
 
-        elif (self.validate_sell(pred, close, smooth_price)):
+        elif (self.validate_sell(pred, close, EMA50)):
             #if (close > ema10):
             #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
             self.request_sell["price"] = sell_price
@@ -138,9 +149,9 @@ class MT_trade_manager:
             result = MT5.order_send(self.request_sell)
             txt = f"Order status: {result}"
             if result.comment == 'Request executed':
-                self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Buy_rate" : {buy_rate}, "Neutral_rate" : {neutral_rate}, "Sell_rate" : {sell_rate}})
+                self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
             print(txt)
-            return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_buy, "Buy_rate" : {buy_rate}, "Neutral_rate" : {neutral_rate}, "Sell_rate" : {sell_rate}}}
+            return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}}}
         return {"result" : False, "message" : "No trade"}
     
     def trade_summary(self):

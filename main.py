@@ -15,7 +15,7 @@ import Logger
 refresh_train_data = False
 polling_time = 120 #seconds
 suspend_time = 300 #seconds
-trade_waiting_time = 300
+trade_waiting_time = 120
 train_data_output_file = "train_data.csv"
 test_data_output_file = "test_data.csv"
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 if (result["result"]):
                     time.sleep(trade_waiting_time)
             else:
-                txt = "Position available, skip"
+                txt = "2 positions available, skip"
                 log_list.append(txt)
                 print(txt)
         except:

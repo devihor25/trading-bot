@@ -31,11 +31,12 @@ def GenerateModel(refresh_train_data):
         test_data_output = test_data_manager.DataManipulate()
         train_data_output = train_data_manager.DataManipulate()
 
-        #logger = Logger.Logger(train_data_processed_output_file)
-        #logger.dump_dataframe(train_data_manager.table)
+        logger = Logger.Logger(train_data_processed_output_file)
+        logger.dump_dataframe(train_data_manager.table)
 
-        #logger = Logger.Logger(test_data_processed_output_file)
-        #logger.dump_dataframe(test_data_manager.table)
+        logger = Logger.Logger(test_data_processed_output_file)
+        logger.dump_dataframe(test_data_manager.table)
+
     else:
         test_data_table = pd.read_csv(test_data_processed_output_file)
         train_data_table = pd.read_csv(train_data_processed_output_file)
@@ -54,7 +55,7 @@ def GenerateModel(refresh_train_data):
     test_data_transform = scaler.fit_transform(test_data_manager.ExportData())
 
     # Train logistic regression model
-    model = LogisticRegression(solver='lbfgs', max_iter=1000)
+    model = LogisticRegression(multi_class='ovr', solver='lbfgs', max_iter=1000)
     model.fit(train_data_trasform, train_data_output)
 
     # Evaluate model
@@ -67,7 +68,7 @@ def GenerateModel(refresh_train_data):
 
         test_data_manager.UpdatePrediction(y_pred, y_pred_proba)
     
-        output = test_data_manager.table.iloc[-3000:, :]
+        output = test_data_manager.table
         logger = Logger.Logger(sample_path)
         logger.dump_dataframe(output)
     #output.to_csv(sample_path, sep=",")
