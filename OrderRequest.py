@@ -82,7 +82,7 @@ class MT_trade_manager:
 
     def validate_buy(self, pred, close, EMA50):
         rate = '|'.join(f"{x}" for x in list(pred[-6:]))
-        filterList = ["1|0|1", "1|0|0|1"]
+        filterList = ["1|0|0|1"]
         for filt in filterList:
             if filt in rate:
                 return False
@@ -93,7 +93,7 @@ class MT_trade_manager:
 
     def validate_sell(self, pred, close, EMA50):
         rate = '|'.join(f"{x}" for x in list(pred[-6:]))
-        filterList = ["0|1|0", "0|1|1|0"]
+        filterList = ["0|1|1|0"]
         for filt in filterList:
             if filt in rate:
                 return False
