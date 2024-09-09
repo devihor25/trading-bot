@@ -15,7 +15,7 @@ class IndicatorTable:
         self.regression_sensitivity = 0.0
         self.key_token = "none"
         self.input_to_model = ["RSI_EMA5","Stochastic","ADX",#"ADX",
-                               "EMA15_30"]#,"EMA10_20"]
+                               "EMA15_30","Close_EMA200"]#,"EMA10_20"]
                                #"EMA10_15","EMA10_20","EMA15_20",
                                #"Slope_EMA20"]
     
@@ -45,10 +45,11 @@ class IndicatorTable:
         #self.table["EMA10"] = self.table[key_close].ewm(span=10).mean()
         self.table["EMA15"] = self.table[key_close].ewm(span=15).mean()
         #self.table["EMA20"] = self.table[key_close].ewm(span=20).mean()
-        #self.table["EMA30"] = self.table[key_close].ewm(span=30).mean()
+        self.table["EMA30"] = self.table[key_close].ewm(span=30).mean()
         self.table["EMA50"] = self.table[key_close].ewm(span=50).mean()
         self.table["EMA100"] = self.table[key_close].ewm(span=100).mean()
-        #self.table["Close_EMA50"] = self.table[key_close] - self.table["EMA30"]
+        self.table["EMA200"] = self.table[key_close].ewm(span=200).mean()
+        self.table["Close_EMA200"] = self.table[key_close] - self.table["EMA200"]
         #self.table["Slope_EMA20"] = self.table["EMA20"].rolling(window=self.curtain).apply(self.calculate_slope, raw=True)
 
         # EMAs cuts
@@ -132,10 +133,10 @@ class IndicatorTable:
 
     def AddBackWard(self, enable):
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
-        rolling = [1, 2, 3, 5, 8, 13]
+        rolling = [2, 3, 5, 8, 13]
         for i in rolling:
             #ratio = int(np.round((i*i)/2,0))
-            ratio = 5*i
+            ratio = 3*i
             key = '_RB_'
             rsi_name = 'RSI_EMA5' + key + str(i)
             #atr_name = 'ATR' + key + str(i)
@@ -150,6 +151,7 @@ class IndicatorTable:
             #EMA10_20_name = "EMA10_20" + key + str(i)
             #EMA15_20_name = "EMA15_20" + key + str(i)
             #Close_EMA50_name = "Close_EMA50" + key + str(i)
+            rolling_EMA50 = "Rolling_EMA50" + key + str(i)
             EMA15_30_name = "EMA15_30" + key + str(i)
             #EMA20_30_name = "EMA20_30" + key + str(i)
             #slope_name = "Slope_EMA20" + key + str(i)
@@ -169,6 +171,7 @@ class IndicatorTable:
                 #self.table[EMA10_20_name] = self.table['EMA10_20'].shift(ratio)
                 #self.table[EMA15_20_name] = self.table['EMA15_20'].shift(ratio)
                 #self.table[Close_EMA50_name] = self.table['Close_EMA50'].shift(ratio)
+                self.table[rolling_EMA50] = (self.table['EMA50'] - self.table['EMA50'].shift(ratio))/self.table['EMA50'].shift(ratio)
                 self.table[EMA15_30_name] = self.table['EMA15_30'].shift(ratio)
                 #self.table[EMA20_30_name] = self.table['EMA20_30'].shift(ratio)
                 #self.table[slope_name] = self.table['Slope_EMA20'].shift(ratio)
@@ -187,12 +190,13 @@ class IndicatorTable:
             #self.input_to_model.append(EMA10_20_name)
             #self.input_to_model.append(EMA15_20_name)
             #self.input_to_model.append(Close_EMA50_name)
+            self.input_to_model.append(rolling_EMA50)
             self.input_to_model.append(EMA15_30_name)
             #self.input_to_model.append(EMA20_30_name)
             #self.input_to_model.append(slope_name)
             #self.input_to_model.append(adx_name)
 
-            self.input_to_model = list(set(self.input_to_model))
+        self.input_to_model = list(set(self.input_to_model))
     
     def ReuseTable(self, table):
         self.table = table

@@ -66,23 +66,23 @@ if __name__ == "__main__":
             normalized_data = scaler.fit_transform(data_manager.ExportData())
             
         
-            pred = my_model.predict(normalized_data)[-50:]
-            pred_proba = my_model.predict_proba(normalized_data)[-50:]
+            pred = my_model.predict(normalized_data)[-51:-1]
+            pred_proba = my_model.predict_proba(normalized_data)[-51:-1]
 
             my_pos = MT5.positions_get()
             history_order = MT5.history_orders_get(now - timedelta(hours=3),now)
             
             trade_sum = trade_manager.trade_summary()
-            pred_string = '|'.join([f"{x}" for x in list(pred[-10:])])
+            pred_string = '|'.join([f"{x}" for x in list(pred[-21:-1])])
             txt = f"{(now + timedelta(hours=4)).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} prediction: {pred_string} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
             #print(txt)
         
             if (trade_manager.verify_order_status(my_pos, history_order)):#((len(my_pos) == 0) and (flag == False)):
-                result = trade_manager.check_for_trade(pred, pred_proba, data_manager.table.tail(50))
+                result = trade_manager.check_for_trade(pred, pred_proba, data_manager.table.iloc[-51:-1])
                 log_list.append(result["message"])
-                if (result["result"]):
-                    time.sleep(trade_waiting_time)
+                #if (result["result"]):
+                    #time.sleep(trade_waiting_time)
             else:
                 txt = "2 positions available, skip"
                 log_list.append(txt)
