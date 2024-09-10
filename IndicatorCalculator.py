@@ -85,7 +85,7 @@ class IndicatorTable:
         self.table['TR'] = np.maximum(self.table[key_high] - self.table[key_low], 
                             np.maximum(abs(self.table[key_high] - self.table[key_close].shift(1)), 
                                        abs(self.table[key_low] - self.table[key_close].shift(1))))
-        self.table['ATR'] = self.table['TR'].rolling(window=14).mean()
+        self.table['ATR'] = self.table['TR'].rolling(window=10).mean()
         self.table['RSI_EMA5'] = self.table["RSI"].ewm(span=10).mean()
         
 
@@ -136,7 +136,7 @@ class IndicatorTable:
         rolling = [2, 3, 5, 8, 13]
         for i in rolling:
             #ratio = int(np.round((i*i)/2,0))
-            ratio = 3*i
+            ratio = 5*i
             key = '_RB_'
             rsi_name = 'RSI_EMA5' + key + str(i)
             #atr_name = 'ATR' + key + str(i)

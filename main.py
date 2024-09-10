@@ -77,9 +77,11 @@ if __name__ == "__main__":
             txt = f"{(now + timedelta(hours=4)).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} prediction: {pred_string} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
             #print(txt)
-        
-            if (trade_manager.verify_order_status(my_pos, history_order)):#((len(my_pos) == 0) and (flag == False)):
-                result = trade_manager.check_for_trade(pred, pred_proba, data_manager.table.iloc[-51:-1])
+            
+            verify = trade_manager.verify_order_status(my_pos, history_order, pred)
+            log_list.append(verify["message"])
+            if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):
+                result = trade_manager.check_for_trade(pred, pred_proba, data_manager.table.iloc[-200:-1])
                 log_list.append(result["message"])
                 #if (result["result"]):
                     #time.sleep(trade_waiting_time)
