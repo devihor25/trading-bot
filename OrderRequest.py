@@ -91,6 +91,9 @@ class MT_trade_manager:
                         result = MT5.order_send(self.request_close)
                         if result.comment == 'Request executed':
                             ID = self.order_taken[i]["ID"]
+                            self.order_taken[i]["Status"] = "ClosedOnDM"
+                            profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - tick.ask))
+                            self.logger.write_log(f"{self.now},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
                 
                 if (self.order_taken[i]["Type"] == "Sell"):
@@ -101,6 +104,9 @@ class MT_trade_manager:
                         result = MT5.order_send(self.request_close)
                         if result.comment == 'Request executed':
                             ID = self.order_taken[i]["ID"]
+                            self.order_taken[i]["Status"] = "ClosedOnDM"
+                            profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - tick.bid))
+                            self.logger.write_log(f"{self.now},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
 
                 for order in history_order:
