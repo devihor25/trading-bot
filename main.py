@@ -82,7 +82,7 @@ if __name__ == "__main__":
             log_list.append(txt)
             #print(txt)
             
-            verify = trade_manager.verify_order_status(my_pos, history_order, pred)
+            verify = trade_manager.verify_order_status(my_pos, history_order, pred_short)
             log_list.append(verify["message"])
             if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):
                 result = trade_manager.check_for_trade(pred, pred_proba, pred_short, data_manager.table.iloc[-200:-1])
