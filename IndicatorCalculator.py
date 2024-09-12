@@ -8,8 +8,8 @@ class IndicatorTable:
         self.remove_rows = 200
         self.curtain = 14
         self.roll_back = 7
-        self.signal_trigger = 0.05 # percentage of price change
-        self.quick_trigger = 0.2
+        self.signal_trigger = 0.03 # percentage of price change
+        self.quick_trigger = 0.12
         self.compare_period_long = 20
         self.compare_period_short = 2
         self.regression_sensitivity = 0.0
@@ -18,6 +18,7 @@ class IndicatorTable:
                                "EMA15_30","Close_EMA200"]#,"EMA10_20"]
                                #"EMA10_15","EMA10_20","EMA15_20",
                                #"Slope_EMA20"]
+        self.input_to_model_short = ["tick_volume"]
     
     def calculate_slope(self, values):
         return np.gradient(values)[-1]
@@ -42,7 +43,7 @@ class IndicatorTable:
 
         # Calculate 15-minute EMA
         #self.table["EMA5"] = self.table[key_close].ewm(span=5).mean()
-        #self.table["EMA10"] = self.table[key_close].ewm(span=10).mean()
+        self.table["EMA10"] = self.table[key_close].ewm(span=10).mean()
         self.table["EMA15"] = self.table[key_close].ewm(span=15).mean()
         #self.table["EMA20"] = self.table[key_close].ewm(span=20).mean()
         self.table["EMA30"] = self.table[key_close].ewm(span=30).mean()
@@ -57,7 +58,7 @@ class IndicatorTable:
         #self.table["EMA5_15"] = self.table["EMA5"] - self.table["EMA15"]
         #self.table["EMA5_20"] = self.table["EMA5"] - self.table["EMA20"]
         #self.table["EMA10_15"] = self.table["EMA10"] - self.table["EMA15"]
-        #self.table["EMA10_20"] = self.table["EMA10"] - self.table["EMA30"]
+        self.table["EMA10_30"] = self.table["EMA10"] - self.table["EMA30"]
         #self.table["EMA15_20"] = self.table["EMA15"] - self.table["EMA20"]
         self.table["EMA15_30"] = self.table["EMA15"] - self.table["EMA50"]
         #self.table["EMA20_30"] = self.table["EMA20"] - self.table["EMA30"]
@@ -121,6 +122,7 @@ class IndicatorTable:
         #self.table['Close_NW_lower'] = self.table['close'] - self.table['Smooth_price_lower']
         # adding backward data
         self.AddBackWard(True)
+        self.AddBackWard_short(True)
         
             #print(self.input_to_model)
         #return table
@@ -135,79 +137,69 @@ class IndicatorTable:
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
         rolling = [2, 3, 5, 8, 13]
         for i in rolling:
-            #ratio = int(np.round((i*i)/2,0))
             ratio = 5*i
             key = '_RB_'
             rsi_name = 'RSI_EMA5' + key + str(i)
-            #atr_name = 'ATR' + key + str(i)
             stoch_name = "Stochastic" + key + str(i)
-            #nw_up_name = 'Close_NW_upper' + key + str(i)
-            #nw_low_name = 'Close_NW_lower' + key + str(i)
-            #volume_name = 'tick_volume' + key + str(i)
-            #EMA5_10_name = "EMA5_10" + key + str(i)
-            #EMA5_15_name = "EMA5_15" + key + str(i)
-            #EMA5_20_name = "EMA5_20" + key + str(i)
-            #EMA10_15_name = "EMA10_15" + key + str(i)
-            #EMA10_20_name = "EMA10_20" + key + str(i)
-            #EMA15_20_name = "EMA15_20" + key + str(i)
-            #Close_EMA50_name = "Close_EMA50" + key + str(i)
             rolling_EMA50 = "Rolling_EMA50" + key + str(i)
             EMA15_30_name = "EMA15_30" + key + str(i)
-            #EMA20_30_name = "EMA20_30" + key + str(i)
-            #slope_name = "Slope_EMA20" + key + str(i)
             adx_name = "ADX" + key + str(i)
             
             if (enable):
                 self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
                 self.table[adx_name] = self.table['ADX'].shift(ratio)
                 self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
-                #self.table[nw_up_name] = self.table['Close_NW_upper'].shift(ratio)
-                #self.table[nw_low_name] = self.table['Close_NW_lower'].shift(ratio)
-                #self.table[volume_name] = self.table['tick_volume'].shift(ratio)
-                #self.table[EMA5_10_name] = self.table['EMA5_10'].shift(ratio)
-                #self.table[EMA5_15_name] = self.table['EMA5_15'].shift(i*ratio)
-                #self.table[EMA5_20_name] = self.table['EMA5_20'].shift(i*ratio)
-                #self.table[EMA10_15_name] = self.table['EMA10_15'].shift(ratio)
-                #self.table[EMA10_20_name] = self.table['EMA10_20'].shift(ratio)
-                #self.table[EMA15_20_name] = self.table['EMA15_20'].shift(ratio)
-                #self.table[Close_EMA50_name] = self.table['Close_EMA50'].shift(ratio)
                 self.table[rolling_EMA50] = (self.table['EMA50'] - self.table['EMA50'].shift(ratio))/self.table['EMA50'].shift(ratio)
                 self.table[EMA15_30_name] = self.table['EMA15_30'].shift(ratio)
-                #self.table[EMA20_30_name] = self.table['EMA20_30'].shift(ratio)
-                #self.table[slope_name] = self.table['Slope_EMA20'].shift(ratio)
-                #self.table[adx_name] = self.table['ADX'].shift(i*ratio)
             
             self.input_to_model.append(rsi_name)
             self.input_to_model.append(adx_name)
             self.input_to_model.append(stoch_name)
-            #self.input_to_model.append(nw_up_name)
-            #self.input_to_model.append(nw_low_name)
-            #self.input_to_model.append(volume_name)
-            #self.input_to_model.append(EMA5_10_name)
-            #self.input_to_model.append(EMA5_15_name)
-            #self.input_to_model.append(EMA5_20_name)
-            #self.input_to_model.append(EMA10_15_name)
-            #self.input_to_model.append(EMA10_20_name)
-            #self.input_to_model.append(EMA15_20_name)
-            #self.input_to_model.append(Close_EMA50_name)
             self.input_to_model.append(rolling_EMA50)
             self.input_to_model.append(EMA15_30_name)
-            #self.input_to_model.append(EMA20_30_name)
-            #self.input_to_model.append(slope_name)
-            #self.input_to_model.append(adx_name)
 
         self.input_to_model = list(set(self.input_to_model))
+
+    def AddBackWard_short(self, enable):
+        # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
+        rolling = [3, 5, 8, 13, 21]
+        for i in rolling:
+            ratio = i
+            key = '_RB_short_'
+            rsi_name = 'RSI_EMA5' + key + str(i)
+            stoch_name = "Stochastic" + key + str(i)
+            rolling_EMA30 = "Rolling_EMA30" + key + str(i)
+            EMA10_30_name = "EMA10_30" + key + str(i)
+            
+            if (enable):
+                self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
+                self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
+                self.table[rolling_EMA30] = (self.table['EMA30'] - self.table['EMA30'].shift(ratio))/self.table['EMA30'].shift(ratio)
+                self.table[EMA10_30_name] = self.table['EMA10_30'].shift(ratio)
+            
+            self.input_to_model_short.append(rsi_name)
+            self.input_to_model_short.append(stoch_name)
+            self.input_to_model_short.append(rolling_EMA30)
+            self.input_to_model_short.append(EMA10_30_name)
+
+        self.input_to_model_short = list(set(self.input_to_model_short))
     
     def ReuseTable(self, table):
         self.table = table
         self.AddBackWard(False)
+        self.AddBackWard_short(False)
     def ExportData(self):
         
         # remove first 200 rows, unused
         self.table = self.table.iloc[self.remove_rows:, :]
         return self.table[self.input_to_model]
 
-    def UpdatePrediction(self, y_pred, y_pred_proba):
+    def ExportData_short(self):
+        
+        # remove first 200 rows, unused
+        return self.table[self.input_to_model_short]
+
+    def UpdatePrediction(self, y_pred, y_pred_proba, y_pred_short):
         # manual offset
         for i in range(len(y_pred)):
             up_prob = y_pred_proba[i][0] + self.regression_sensitivity
@@ -224,6 +216,7 @@ class IndicatorTable:
         self.table.loc[:, 'Predict'] = y_pred
         self.table.loc[:, 'Predict_down'] = y_pred_proba[:, 0]
         self.table.loc[:, 'Predict_up'] = y_pred_proba[:, 1]
+        self.table.loc[:, 'Predict_short'] = y_pred_short
 
     # AI generated
     def DataManipulate(self):
@@ -247,6 +240,31 @@ class IndicatorTable:
 
         self.table['Bias'] = signal
         return signal[self.remove_rows:]
+
+    def DataManipulate_short(self):
+        key = "EMA10"
+        signal = pd.Series(0, dtype="int64", index=self.table.index)
+        for i in range(self.table.shape[0] - self.compare_period_long - self.compare_period_short):
+            signal_value = -1
+            for j in range(1, self.compare_period_long):
+                shifter_min_1 = min(i + j, self.table.shape[0] - 1)
+                if ((self.table[key].iloc[shifter_min_1] - self.table[key].iloc[i]) / self.table[key].iloc[i]) * 100 > self.quick_trigger:
+                    if all(self.table[key].iloc[min(i + k, self.table.shape[0] - 1)] > self.table[key].iloc[i] for k in range(1, min(self.compare_period_short, self.table.shape[0] - i - 1))):
+                        signal_value = 1
+                        break
+                elif ((self.table[key].iloc[shifter_min_1] - self.table[key].iloc[i]) / self.table[key].iloc[i]) * 100 < -self.quick_trigger:
+                    if all(self.table[key].iloc[min(i + k, self.table.shape[0] - 1)] < self.table[key].iloc[i] for k in range(1, min(self.compare_period_short, self.table.shape[0] - i - 1))):
+                        signal_value = 0
+                        break
+            if signal_value == -1 and i > 0:
+                signal_value = signal[i - 1]
+            signal[i] = int(signal_value)
+
+        self.table['Bias_short'] = signal
+        return signal[self.remove_rows:]
     
     def ReuseSignal(self):
         return self.table['Bias'][self.remove_rows:]
+
+    def ReuseSignal_short(self):
+        return self.table['Bias_short'][self.remove_rows:]

@@ -92,7 +92,7 @@ class MT_trade_manager:
                         if result.comment == 'Request executed':
                             ID = self.order_taken[i]["ID"]
                             self.order_taken[i]["Status"] = "ClosedOnDM"
-                            profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - tick.ask))
+                            profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - tick.ask)
                             self.logger.write_log(f"{self.now},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
                 
@@ -105,7 +105,7 @@ class MT_trade_manager:
                         if result.comment == 'Request executed':
                             ID = self.order_taken[i]["ID"]
                             self.order_taken[i]["Status"] = "ClosedOnDM"
-                            profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - tick.bid))
+                            profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - tick.bid)
                             self.logger.write_log(f"{self.now},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
 
@@ -134,13 +134,17 @@ class MT_trade_manager:
                 #return True
         return {"result" : True, "message" : "|".join(message)}
 
-    def validate_buy(self, pred, dataframe):
-        rate = '|'.join(f"{x}" for x in list(pred[-10:]))
+    def validate_buy(self, pred, pred_short, dataframe):
+        rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
+        long_rate = '|'.join(f"{x}" for x in list(pred[-10:]))
         rsi = dataframe.iloc[-1]['RSI_EMA5']
         filterList = ["0|1|0|1", "1|0|1|0"]
         for filt in filterList:
             if filt in rate:
-                return {"result" : False, "message" : "validate_buy [skip - filter]"}
+                return {"result" : False, "message" : "validate_buy [skip - filter short]"}
+            if filt in long_rate:
+                return {"result" : False, "message" : "validate_buy [skip - filter long]"}
+
         #for i in range (1, 3):
         close_mean = dataframe.tail(3)['close'].mean()
         ema15_mean = dataframe.tail(3)['EMA15'].mean()
@@ -151,21 +155,27 @@ class MT_trade_manager:
             if order["Status"] == "Open" and order["Type"] == "Buy":
                 return {"result" : False, "message" : "validate_buy [skip - buy position available]"}
  
-        if rsi < 60:
+        if rsi < 40:
             return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} weak, waiting to get stronger]"}
 
+        if "1|1" not in long_rate:
+            return {"result" : False, "message" : f"validate_buy [skip - long rate {long_rate} does not contain buy signal]"}
+
         if ("0|1|1" in rate[:-2]):
-            if ((pred[-1] == 1) and (pred[-2] == 1)):
+            if (pred_short[-1] == 1):# and (pred_short[-2] == 1)):
                 return {"result" : True, "message" : ""}
         return {"result" : False, "message" : "validate_buy [no matching condition]"}
 
-    def validate_sell(self, pred, dataframe):
-        rate = '|'.join(f"{x}" for x in list(pred[-10:]))
+    def validate_sell(self, pred, pred_short, dataframe):
+        rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
+        long_rate = '|'.join(f"{x}" for x in list(pred[-10:]))
         rsi = dataframe.iloc[-1]['RSI_EMA5']
         filterList = ["0|1|0|1", "1|0|1|0"]
         for filt in filterList:
             if filt in rate:
-                return {"result" : False, "message" : "validate_sell [skip - filter]"}
+                return {"result" : False, "message" : "validate_buy [skip - filter short]"}
+            if filt in long_rate:
+                return {"result" : False, "message" : "validate_buy [skip - filter long]"}
         
         #for i in range (1, 3):
         close_mean = dataframe.tail(3)['close'].mean()
@@ -177,15 +187,18 @@ class MT_trade_manager:
             if order["Status"] == "Open" and order["Type"] == "Sell":
                 return {"result" : False, "message" : "validate_sell [skip - sell position available]"}
 
-        if rsi > 40:
+        if rsi > 60:
             return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} strong, waiting to get weaker]"}
 
+        if "0|0" not in long_rate:
+            return {"result" : False, "message" : f"validate_buy [skip - long rate {long_rate} does not contain sell signal]"}
+
         if ("1|0|0" in rate[:-2]):
-            if ((pred[-1] == 0) and (pred[-2] == 0) and (rsi < 40)):
+            if (pred_short[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
                 return {"result" : True, "message" : ""}
         return {"result" : False, "message" : "validate_sell [no matching condition]"}
 
-    def check_for_trade(self, pred, pred_proba, dataframe):
+    def check_for_trade(self, pred, pred_proba, pred_short, dataframe):
         infor = MT5.symbol_info_tick(self.trading_symbol)
         # previous candle
         atr = dataframe.iloc[-1]['ATR']
@@ -198,7 +211,7 @@ class MT_trade_manager:
             return {"result" : False, "message" : f"Small ATR {atr:.3f} skip trade"}
 
         if adx < 25:  #take trade only when ATR >= 2 dollar
-            return {"result" : False, "message" : f"Weak ADX {atr:.3f} skip trade"}
+            return {"result" : False, "message" : f"Weak ADX {adx:.3f} skip trade"}
 
         #if adx < 20:  #adx should be > 20 to indicate strong trend
         #    return {"result" : False, "message" : f"Small ADX {adx:.3f} skip trade"}
@@ -211,7 +224,7 @@ class MT_trade_manager:
         up_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 1])])
         down_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
 
-        validate_result = self.validate_buy(pred, dataframe)
+        validate_result = self.validate_buy(pred, pred_short, dataframe)
         message = validate_result["message"]
         if (validate_result["result"]):
             #if (close < ema10):
@@ -228,7 +241,7 @@ class MT_trade_manager:
             #print(txt)
                 return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
         
-        validate_result = self.validate_sell(pred, dataframe)
+        validate_result = self.validate_sell(pred, pred_short, dataframe)
         message = message + "|" + validate_result["message"]
         if (validate_result["result"]):
             #if (close > ema10):
