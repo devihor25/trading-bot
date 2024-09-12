@@ -158,7 +158,7 @@ class MT_trade_manager:
         if rsi < 40:
             return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} weak, waiting to get stronger]"}
 
-        if "1|1" not in long_rate:
+        if "1|1" not in long_rate and not long_rate.endswith("1|1"):
             return {"result" : False, "message" : f"validate_buy [skip - long rate {long_rate} does not contain buy signal]"}
 
         if ("0|1|1" in rate[:-2]):
@@ -190,7 +190,7 @@ class MT_trade_manager:
         if rsi > 60:
             return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} strong, waiting to get weaker]"}
 
-        if "0|0" not in long_rate:
+        if "0|0" not in long_rate and not long_rate.endswith("0|0"):
             return {"result" : False, "message" : f"validate_buy [skip - long rate {long_rate} does not contain sell signal]"}
 
         if ("1|0|0" in rate[:-2]):
