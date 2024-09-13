@@ -57,8 +57,8 @@ if __name__ == "__main__":
                 print("initialize() failed")
                 MT5.shutdown()
 
-            now = datetime.now(utc_time) + timedelta(hours=3)
-            date_from = (noww - timedelta(days =60)).replace(hour=0, minute=0, second=0, microsecond=0)
+            now = datetime.now(utc_time) + timedelta(hours=7)
+            date_from = (noww - timedelta(days =30)).replace(hour=0, minute=0, second=0, microsecond=0)
 
             data_manager = IC.IndicatorTable()
             gold_ticks = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_from, now))
@@ -68,24 +68,25 @@ if __name__ == "__main__":
             normalized_data = scaler.fit_transform(data_manager.ExportData())
             normalized_data_short = scaler.fit_transform(data_manager.ExportData_short())
         
-            pred = my_model.predict(normalized_data)[-51:-1]
-            pred_short = my_model_short.predict(normalized_data_short)[-51:-1]
-            pred_proba = my_model.predict_proba(normalized_data)[-51:-1]
-
+            pred = my_model.predict(normalized_data)
+            pred_short = my_model_short.predict(normalized_data_short)
+            pred_proba = my_model.predict_proba(normalized_data)
+            #data_manager.UpdatePrediction(pred, pred_proba, pred_short)
             my_pos = MT5.positions_get()
             history_order = MT5.history_orders_get(now - timedelta(hours=3),now)
-            
+            #data_manager.table.iloc[-1000:].to_csv("debug.csv", sep=",")
+
             trade_sum = trade_manager.trade_summary()
             pred_string = '|'.join([f"{x}" for x in list(pred[-21:])])
             pred_string_short = '|'.join([f"{x}" for x in list(pred_short[-21:])])
-            txt = f"{(now + timedelta(hours=4)).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+            txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
             #print(txt)
             
             verify = trade_manager.verify_order_status(my_pos, history_order, pred_short)
             log_list.append(verify["message"])
             if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):
-                result = trade_manager.check_for_trade(pred, pred_proba, pred_short, data_manager.table.iloc[-200:-1])
+                result = trade_manager.check_for_trade(pred_short, pred_proba, pred, data_manager.table.iloc[-200:-1])
                 log_list.append(result["message"])
                 #if (result["result"]):
                     #time.sleep(trade_waiting_time)
@@ -94,7 +95,7 @@ if __name__ == "__main__":
                 log_list.append(txt)
                 print(txt)
         except:
-            txt = f"time: {now} error while executing code, sleep for {suspend_time}s"
+            txt = f"{now} error while executing code, sleep for {suspend_time}s"
             logger.write_log(txt)
             time.sleep(suspend_time)
         

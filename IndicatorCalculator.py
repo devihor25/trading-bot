@@ -42,10 +42,10 @@ class IndicatorTable:
             #key_open = 'open'
 
         # Calculate 15-minute EMA
-        #self.table["EMA5"] = self.table[key_close].ewm(span=5).mean()
+        self.table["EMA5"] = self.table[key_close].ewm(span=5).mean()
         self.table["EMA10"] = self.table[key_close].ewm(span=10).mean()
         self.table["EMA15"] = self.table[key_close].ewm(span=15).mean()
-        #self.table["EMA20"] = self.table[key_close].ewm(span=20).mean()
+        self.table["EMA20"] = self.table[key_close].ewm(span=20).mean()
         self.table["EMA30"] = self.table[key_close].ewm(span=30).mean()
         self.table["EMA50"] = self.table[key_close].ewm(span=50).mean()
         self.table["EMA100"] = self.table[key_close].ewm(span=100).mean()
@@ -56,9 +56,9 @@ class IndicatorTable:
         # EMAs cuts
         #self.table["EMA5_10"] = self.table["EMA5"] - self.table["EMA10"]
         #self.table["EMA5_15"] = self.table["EMA5"] - self.table["EMA15"]
-        #self.table["EMA5_20"] = self.table["EMA5"] - self.table["EMA20"]
+        self.table["EMA5_20"] = self.table["EMA5"] - self.table["EMA20"]
         #self.table["EMA10_15"] = self.table["EMA10"] - self.table["EMA15"]
-        self.table["EMA10_30"] = self.table["EMA10"] - self.table["EMA30"]
+        #self.table["EMA10_30"] = self.table["EMA10"] - self.table["EMA30"]
         #self.table["EMA15_20"] = self.table["EMA15"] - self.table["EMA20"]
         self.table["EMA15_30"] = self.table["EMA15"] - self.table["EMA50"]
         #self.table["EMA20_30"] = self.table["EMA20"] - self.table["EMA30"]
@@ -169,13 +169,13 @@ class IndicatorTable:
             rsi_name = 'RSI_EMA5' + key + str(i)
             stoch_name = "Stochastic" + key + str(i)
             rolling_EMA30 = "Rolling_EMA30" + key + str(i)
-            EMA10_30_name = "EMA10_30" + key + str(i)
+            EMA10_30_name = "EMA5_20" + key + str(i)
             
             if (enable):
                 self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
                 self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
-                self.table[rolling_EMA30] = (self.table['EMA30'] - self.table['EMA30'].shift(ratio))/self.table['EMA30'].shift(ratio)
-                self.table[EMA10_30_name] = self.table['EMA10_30'].shift(ratio)
+                self.table[rolling_EMA30] = (self.table['EMA20'] - self.table['EMA20'].shift(ratio))/self.table['EMA20'].shift(ratio)
+                self.table[EMA10_30_name] = self.table['EMA5_20'].shift(ratio)
             
             self.input_to_model_short.append(rsi_name)
             self.input_to_model_short.append(stoch_name)
