@@ -8,7 +8,7 @@ class IndicatorTable:
         self.remove_rows = 200
         self.curtain = 14
         self.roll_back = 7
-        self.signal_trigger = 0.03 # percentage of price change
+        self.signal_trigger = 0.07 # percentage of price change
         self.quick_trigger = 0.12
         self.compare_period_long = 20
         self.compare_period_short = 2
@@ -18,7 +18,7 @@ class IndicatorTable:
                                "EMA15_30","Close_EMA200"]#,"EMA10_20"]
                                #"EMA10_15","EMA10_20","EMA15_20",
                                #"Slope_EMA20"]
-        self.input_to_model_short = ["tick_volume"]
+        self.input_to_model_short = ["EMA5_20"]
     
     def calculate_slope(self, values):
         return np.gradient(values)[-1]
@@ -135,7 +135,7 @@ class IndicatorTable:
 
     def AddBackWard(self, enable):
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
-        rolling = [2, 3, 5, 8, 13]
+        rolling = [2, 3, 5, 8, 13, 21]
         for i in rolling:
             ratio = 5*i
             key = '_RB_'
@@ -149,7 +149,7 @@ class IndicatorTable:
                 self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
                 self.table[adx_name] = self.table['ADX'].shift(ratio)
                 self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
-                self.table[rolling_EMA50] = (self.table['EMA50'] - self.table['EMA50'].shift(ratio))/self.table['EMA50'].shift(ratio)
+                self.table[rolling_EMA50] = (self.table['EMA30'] - self.table['EMA30'].shift(ratio))/self.table['EMA30'].shift(ratio)
                 self.table[EMA15_30_name] = self.table['EMA15_30'].shift(ratio)
             
             self.input_to_model.append(rsi_name)
@@ -162,23 +162,23 @@ class IndicatorTable:
 
     def AddBackWard_short(self, enable):
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
-        rolling = [3, 5, 8, 13, 21]
+        rolling = [2, 3, 5, 8, 13, 21]
         for i in rolling:
             ratio = i
             key = '_RB_short_'
-            rsi_name = 'RSI_EMA5' + key + str(i)
-            stoch_name = "Stochastic" + key + str(i)
+            rsi_name = 'RSI' + key + str(i)
+            #stoch_name = "Stochastic" + key + str(i)
             rolling_EMA30 = "Rolling_EMA30" + key + str(i)
             EMA10_30_name = "EMA5_20" + key + str(i)
             
             if (enable):
-                self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
-                self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
+                self.table[rsi_name] = self.table['RSI'].shift(ratio)
+                #self.table[stoch_name] = self.table['Stochastic'].shift(ratio)
                 self.table[rolling_EMA30] = (self.table['EMA20'] - self.table['EMA20'].shift(ratio))/self.table['EMA20'].shift(ratio)
                 self.table[EMA10_30_name] = self.table['EMA5_20'].shift(ratio)
             
             self.input_to_model_short.append(rsi_name)
-            self.input_to_model_short.append(stoch_name)
+            #self.input_to_model_short.append(stoch_name)
             self.input_to_model_short.append(rolling_EMA30)
             self.input_to_model_short.append(EMA10_30_name)
 
@@ -189,7 +189,6 @@ class IndicatorTable:
         self.AddBackWard(False)
         self.AddBackWard_short(False)
     def ExportData(self):
-        
         # remove first 200 rows, unused
         self.table = self.table.iloc[self.remove_rows:, :]
         return self.table[self.input_to_model]
@@ -198,6 +197,24 @@ class IndicatorTable:
         
         # remove first 200 rows, unused
         return self.table[self.input_to_model_short]
+
+    def ExportData_simulate(self):
+        # remove first 200 rows, unused
+        temp = self.input_to_model
+        temp.extend(self.input_to_model_short)
+        temp.insert(0, 'trade_result')
+        temp.insert(0, 'trade_flag')
+        temp.insert(0, 'ATR')
+        temp.insert(0, 'EMA30')
+        temp.insert(0, 'EMA20')
+        temp.insert(0, 'EMA10')
+        temp.insert(0, 'close')
+        temp.insert(0, 'low')
+        temp.insert(0, 'high')
+        temp.insert(0, 'open')
+        temp.insert(0, 'time')
+        self.table = self.table.iloc[self.remove_rows:, :]
+        return self.table[temp]
 
     def UpdatePrediction(self, y_pred, y_pred_proba, y_pred_short):
         # manual offset
