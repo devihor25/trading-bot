@@ -240,6 +240,14 @@ class MT_trade_manager:
 
         if ("0|1|1" in rate and pred[-1] == 1):# and (pred_short[-2] == 1)):
             return {"result" : True, "message" : ""}
+
+        # reverse 
+        if "1|1" not in rate or not rate.endswith("1|1"):
+            return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain buy signal]"}
+
+        if ("0|1|1" in short_rate and pred_short[-1] == 1):# and (pred_short[-2] == 1)):
+            return {"result" : True, "message" : ""}
+
         return {"result" : False, "message" : "validate_buy [no matching condition]"}
 
     def validate_sell(self, pred_short, pred, dataframe):
@@ -271,6 +279,13 @@ class MT_trade_manager:
 
         if ("1|0|0" in rate and pred[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
             return {"result" : True, "message" : ""}
+
+        if "0|0" not in rate or not rate.endswith("0|0"):
+            return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain sell signal]"}
+
+        if ("1|0|0" in short_rate and pred_short[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
+            return {"result" : True, "message" : ""}
+
         return {"result" : False, "message" : "validate_sell [no matching condition]"}
 
     def check_for_trade(self, pred_short, pred_proba, pred, dataframe):
