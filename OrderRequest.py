@@ -324,7 +324,7 @@ class MT_trade_manager:
                 if result.comment == 'Request executed':
                     logger = Logger.Logger(f"trade_taken_{result.order}.csv")
                     logger.dump_dataframe(dataframe)
-                    self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                    self.order_taken.append({"ID" : result.order, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
                     return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
         
@@ -349,7 +349,7 @@ class MT_trade_manager:
                 if result.comment == 'Request executed':
                     logger = Logger.Logger(f"trade_taken_{result.order}.csv")
                     logger.dump_dataframe(dataframe)
-                    self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                    self.order_taken.append({"ID" : result.order, "Time" : self.now, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
                     return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
         return {"result" : False, "message" : f"{message}"}
@@ -358,7 +358,7 @@ class MT_trade_manager:
         if self.simulation:
             self.now = now
         else:
-            self.now = (datetime.now(pytz.timezone('UTC')) + timedelta(hours=7)).strftime("%H_%M_%S-%d_%m_%Y")
+            self.now = now
         win = 0
         lose = 0
         for order in self.order_taken:
