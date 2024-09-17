@@ -8,12 +8,14 @@ import IndicatorCalculator as IC
 #import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 import Logger
 
 
 sample_path = "manipulate.csv"
 train_data_output_file = "train_data.csv"
 test_data_output_file = "test_data.csv"
+cluster_file = "cluster.csv"
 
 train_data_processed_output_file = "train_data_processed.csv"
 test_data_processed_output_file = "test_data_processed.csv"
@@ -88,6 +90,18 @@ def GenerateModel(refresh_train_data):
     #output.to_csv(sample_path, sep=",")
 
     return {"long" : model, "short" : model_short}
+def GenerateCluster(count):
+    test_data_manager = IC.IndicatorTable()
+    train_data = pd.read_csv(cluster_file)
+    test_data_manager.ReuseTable(train_data)
+    output = test_data_manager.table['trade_result']
+    scaler = StandardScaler()
+    test_data_manager.Init_cluster_MG(count)
+    scaled_features = scaler.fit_transform(test_data_manager.ExportData_cluster_MG())
+    # K-Means clustering
+    model = LogisticRegression(multi_class='ovr', solver='lbfgs', max_iter=1000)
+    model.fit(scaled_features, output)
+    return model
 
 def convert_unix_time(unix_time):
     dt = datetime.utcfromtimestamp(unix_time)

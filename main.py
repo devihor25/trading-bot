@@ -10,12 +10,13 @@ import pytz
 import time
 import ModelGenerator as MG
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 import OrderRequest as OR
 import Logger
 import Simulator
 
 refresh_train_data = False
-simulation = False
+simulation = True
 
 polling_time = 120 #seconds
 suspend_time = 300 #seconds
@@ -53,77 +54,86 @@ if __name__ == "__main__":
     mod = MG.GenerateModel(refresh_train_data)
     my_model = mod["long"]
     my_model_short = mod["short"]
+    cluser_model = MG.GenerateCluster(10)
     simulator = None
-
+    
     if simulation:
         sim_time_from = (noww - timedelta(days =180)).replace(hour=0, minute=0, second=0, microsecond=0)
-        sim_time_to = (noww - timedelta(days =140)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_to = (noww - timedelta(days =145)).replace(hour=0, minute=0, second=0, microsecond=0)
         table = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, sim_time_from, sim_time_to))
-        simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180)
+        simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180, 8)
         now = sim_time_from + timedelta(days =31)
         date_from = now - timedelta(days =30)
         polling_time = 0 #seconds
         suspend_time = 0 #seconds
         trade_waiting_time = 0
+
+
     while True:
         log_list = []
-        try:
-            if not simulation:
-                if not MT5.initialize():
-                    print("initialize() failed")
-                    MT5.shutdown()
+    #try:
+        if not simulation:
+            if not MT5.initialize():
+                print("initialize() failed")
+                MT5.shutdown()
+                
+        data_manager = IC.IndicatorTable()
 
-            data_manager = IC.IndicatorTable()
-
-            if simulation:
-                now = now + timedelta(seconds= 180)
-                date_from = now - timedelta(days =30)
-                gold_ticks = simulator.OutputData(date_from, now)
-            else:
-                now = datetime.now(utc_time) + timedelta(hours=7)
-                date_from = (noww - timedelta(days =30)).replace(hour=0, minute=0, second=0, microsecond=0)
-                gold_ticks = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_from, now))
+        if simulation:
+            now = now + timedelta(seconds= 180)
+            date_from = now - timedelta(days =30)
+            gold_ticks = simulator.OutputData(date_from, now)
+        else:
+            now = datetime.now(utc_time) + timedelta(hours=7)
+            date_from = (noww - timedelta(days =30)).replace(hour=0, minute=0, second=0, microsecond=0)
+            gold_ticks = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, date_from, now))
             
-            data_manager.Calculate(gold_ticks)
+        data_manager.Calculate(gold_ticks)
 
-            scaler = MinMaxScaler()
-            normalized_data = scaler.fit_transform(data_manager.ExportData())
-            normalized_data_short = scaler.fit_transform(data_manager.ExportData_short())
+        scaler = MinMaxScaler()
+        normalized_data = scaler.fit_transform(data_manager.ExportData())
+        normalized_data_short = scaler.fit_transform(data_manager.ExportData_short())
         
-            pred = my_model.predict(normalized_data)
-            pred_short = my_model_short.predict(normalized_data_short)
-            pred_proba = my_model.predict_proba(normalized_data)
-            #data_manager.UpdatePrediction(pred, pred_proba, pred_short)
-            my_pos = MT5.positions_get()
-            history_order = MT5.history_orders_get(now - timedelta(hours=10),now)
-            #data_manager.table.iloc[-1000:].to_csv("debug.csv", sep=",")
+        pred = my_model.predict(normalized_data)
+        pred_short = my_model_short.predict(normalized_data_short)
+        pred_proba = my_model.predict_proba(normalized_data)
+        pred_short_proba = my_model_short.predict_proba(normalized_data_short)
 
-            trade_sum = trade_manager.trade_summary(now)
-            pred_string = '|'.join([f"{x}" for x in list(pred[-21:-1])])
-            pred_string_short = '|'.join([f"{x}" for x in list(pred_short[-21:-1])])
-            if simulation:
-                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
-            else:
-                txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+        data_manager.Init_cluster()
+        cluster_scaler = StandardScaler()
+        cluster_scaled = cluster_scaler.fit_transform(data_manager.ExportData_cluster(pred_proba[-11:-1], pred_short_proba[-11:-1]))
+        cluster_pred = [array[1] for array in cluser_model.predict_proba(cluster_scaled)]
+        #data_manager.UpdatePrediction(pred, pred_proba, pred_short)
+        my_pos = MT5.positions_get()
+        history_order = MT5.history_orders_get(now - timedelta(hours=10),now)
+        #data_manager.table.iloc[-1000:].to_csv("debug.csv", sep=",")
+
+        trade_sum = trade_manager.trade_summary(now)
+        pred_string = '|'.join([f"{x}" for x in list(pred[-21:-1])])
+        pred_string_short = '|'.join([f"{x}" for x in list(pred_short[-21:-1])])
+        if simulation:
+            txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+        else:
+            txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+        log_list.append(txt)
+        #print(txt)
+            
+        verify = trade_manager.verify_order_status(my_pos, history_order, pred[-21:-1], pred_short[-21:-1], simulator)
+        log_list.append(verify["message"])
+        if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):cluster_pred[-21:-1]
+            result = trade_manager.check_for_trade(cluster_pred, pred_short[-21:-1], pred_short_proba[-21:-1], pred_proba[-21:-1], pred[-21:-1], data_manager.table.iloc[-200:-1])
+            log_list.append(result["message"])
+            #if (result["result"]):
+                #time.sleep(trade_waiting_time)
+        else:
+            txt = "2 positions available, skip"
             log_list.append(txt)
             #print(txt)
-            
-            verify = trade_manager.verify_order_status(my_pos, history_order, pred[-21:-1], pred_short[-21:-1], simulator)
-            log_list.append(verify["message"])
-            if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):
-                result = trade_manager.check_for_trade(pred_short[-21:-1], pred_proba[-21:-1], pred[-21:-1], data_manager.table.iloc[-200:-1])
-                log_list.append(result["message"])
-                #if (result["result"]):
-                    #time.sleep(trade_waiting_time)
-            else:
-                txt = "2 positions available, skip"
-                log_list.append(txt)
-                print(txt)
-        except:
-            if not simulation:
-                txt = f"{now} error while executing code, sleep for {suspend_time}s"
-                logger.write_log(txt)
-                time.sleep(suspend_time)
+    #except:
+        #if not simulation:
+            #txt = f"{now} error while executing code, sleep for {suspend_time}s"
+            #logger.write_log(txt)
+            #time.sleep(suspend_time)
         
         logger.write_log_list(log_list)
         

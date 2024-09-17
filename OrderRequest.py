@@ -24,7 +24,7 @@ class MT_trade_manager:
         self.now = (datetime.now(pytz.timezone('UTC')) + timedelta(hours=7)).strftime("%H_%M_%S-%d_%m_%Y")
         self.log_file = "position_taken_session_" + self.now + ".csv"
         self.logger = Logger.Logger(self.log_file)
-        self.logger.write_log("Time,Time stamp,Position ID,Type,Price,TP,SL,Up Rate,Down Rate,Result,Profit")
+        self.logger.write_log("Time,Time stamp,Position ID,Type,Price,TP,SL,Up Rate,Down Rate,Result,Profit,Cluster")
         
         self.request_buy = {
         "action": MT5.TRADE_ACTION_DEAL,
@@ -98,18 +98,28 @@ class MT_trade_manager:
                                 self.order_taken[i]["Status"] = "Win-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['tp'] - self.order_taken[i]['Detail']['price'])
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit},{cluster}")
                                 message.append(f"Simulation: Win result")
-                                simulator.AddTradeFlag(time_from, time_to, 1, 1)
+                                preds_up = self.order_taken[i]["pred_up"]
+                                preds_up_short = self.order_taken[i]["pred_up_short"]
+                                preds_down = self.order_taken[i]["pred_down"]
+                                preds_down_short = self.order_taken[i]["pred_down_short"]
+                                simulator.AddTradeFlag(time_from, time_to, 1, 1, preds_up, preds_up_short, preds_down, preds_down_short)
                                 break
 
                             if ticks['close'][ind] + 0.4 <= self.order_taken[i]['Detail']['sl'] or ticks['low'][ind] <= self.order_taken[i]['Detail']['sl']:
                                 self.order_taken[i]["Status"] = "Lose-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['sl'] - self.order_taken[i]['Detail']['price'])
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose-simulate,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose-simulate,{profit},{cluster}")
                                 message.append(f"Simulation: Lose result")
-                                simulator.AddTradeFlag(time_from, time_to, 1, -1)
+                                preds_up = self.order_taken[i]["pred_up"]
+                                preds_up_short = self.order_taken[i]["pred_up_short"]
+                                preds_down = self.order_taken[i]["pred_down"]
+                                preds_down_short = self.order_taken[i]["pred_down_short"]
+                                simulator.AddTradeFlag(time_from, time_to, 1, -1, preds_up, preds_up_short, preds_down, preds_down_short)
                                 break
 
                         if (self.order_taken[i]["Type"] == "Sell"):
@@ -117,18 +127,28 @@ class MT_trade_manager:
                                 self.order_taken[i]["Status"] = "Win-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp'])
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit},{cluster}")
                                 message.append(f"Simulation: Win result")
-                                simulator.AddTradeFlag(time_from, time_to, -1, 1)
+                                preds_up = self.order_taken[i]["pred_up"]
+                                preds_up_short = self.order_taken[i]["pred_up_short"]
+                                preds_down = self.order_taken[i]["pred_down"]
+                                preds_down_short = self.order_taken[i]["pred_down_short"]
+                                simulator.AddTradeFlag(time_from, time_to, -1, 1, preds_up, preds_up_short, preds_down, preds_down_short)
                                 break
 
                             if ticks['close'][ind] - 0.4 >= self.order_taken[i]['Detail']['sl'] or ticks['high'][ind] >= self.order_taken[i]['Detail']['sl']:
                                 self.order_taken[i]["Status"] = "Lose-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['sl'])
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose-simulate,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose-simulate,{profit},{cluster}")
                                 message.append(f"Simulation: Lose result")
-                                simulator.AddTradeFlag(time_from, time_to, -1, -1)
+                                preds_up = self.order_taken[i]["pred_up"]
+                                preds_up_short = self.order_taken[i]["pred_up_short"]
+                                preds_down = self.order_taken[i]["pred_down"]
+                                preds_down_short = self.order_taken[i]["pred_down_short"]
+                                simulator.AddTradeFlag(time_from, time_to, -1, 1, preds_up, preds_up_short, preds_down, preds_down_short)
                                 break
 
         tick = MT5.symbol_info_tick(self.trading_symbol)
@@ -147,7 +167,8 @@ class MT_trade_manager:
                             profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - ticks['close'].tail(1).values[0])
                             ID = self.order_taken[i]["ID"]
                             self.order_taken[i]["profit"] = profit
-                            self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
+                            cluster = self.order_taken[i]["cluster"]
+                            self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit},{cluster}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
                         else:
                             result = MT5.order_send(self.request_close)
@@ -156,7 +177,8 @@ class MT_trade_manager:
                                 self.order_taken[i]["Status"] = "ClosedOnDM"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - tick.ask)
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit},{cluster}")
                                 message.append(f"Successfully close order {ID} due to reversing trend")
                 
                 if (self.order_taken[i]["Type"] == "Sell"):
@@ -172,7 +194,8 @@ class MT_trade_manager:
                             profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - ticks['close'].tail(1).values[0])
                             ID = self.order_taken[i]["ID"]
                             self.order_taken[i]["profit"] = profit
-                            self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
+                            cluster = self.order_taken[i]["cluster"]
+                            self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit},{cluster}")
                             message.append(f"Successfully close order {ID} due to reversing trend")
                         else:
                             result = MT5.order_send(self.request_close)
@@ -181,7 +204,8 @@ class MT_trade_manager:
                                 self.order_taken[i]["Status"] = "ClosedOnDM"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - tick.bid)
                                 self.order_taken[i]["profit"] = profit
-                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit}")
+                                cluster = self.order_taken[i]["cluster"]
+                                self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},CloseOnDM,{profit},{cluster}")
                                 message.append(f"Successfully close order {ID} due to reversing trend")
 
                 for order in history_order:
@@ -191,13 +215,15 @@ class MT_trade_manager:
                         #Time,Position ID,Type,Price,TP,SL,Up Rate,Down Rate,Result,Profit
                         profit = -(self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['sl']))
                         self.order_taken[i]["profit"] = profit
-                        self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose,{profit}")
+                        cluster = self.order_taken[i]["cluster"]
+                        self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Lose,{profit},{cluster}")
 
                     elif (order.position_id == self.order_taken[i]["ID"] and "tp" in order.comment and self.order_taken[i]["Status"] == "Open"):
                         self.order_taken[i]["Status"] = "Win"
                         profit = (self.lot/0.01) * abs((self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp']))
                         self.order_taken[i]["profit"] = profit
-                        self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win,{profit}")
+                        cluster = self.order_taken[i]["cluster"]
+                        self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win,{profit},{cluster}")
 
         if (len(my_pos) > 1):
             message.append("2 Positions are available")
@@ -240,6 +266,14 @@ class MT_trade_manager:
 
         if ("0|1|1" in rate and pred[-1] == 1):# and (pred_short[-2] == 1)):
             return {"result" : True, "message" : ""}
+
+        # reverse 
+        if "1|1" not in rate or not rate.endswith("1|1"):
+            return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain buy signal]"}
+
+        if ("0|1|1" in short_rate and pred_short[-1] == 1):# and (pred_short[-2] == 1)):
+            return {"result" : True, "message" : ""}
+
         return {"result" : False, "message" : "validate_buy [no matching condition]"}
 
     def validate_sell(self, pred_short, pred, dataframe):
@@ -271,10 +305,23 @@ class MT_trade_manager:
 
         if ("1|0|0" in rate and pred[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
             return {"result" : True, "message" : ""}
+        
+        #reverse
+        if "0|0" not in rate or not rate.endswith("0|0"):
+            return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain sell signal]"}
+
+        if ("1|0|0" in short_rate and pred_short[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
+            return {"result" : True, "message" : ""}
+
         return {"result" : False, "message" : "validate_sell [no matching condition]"}
 
-    def check_for_trade(self, pred_short, pred_proba, pred, dataframe):
+    def check_for_trade(self, cluster_pred, pred_short, pred_short_proba, pred_proba, pred, dataframe):
         infor = MT5.symbol_info_tick(self.trading_symbol)
+        up_prob = [array[1] for array in pred_proba[-10:]]
+        down_prob = [array[0] for array in pred_proba[-10:]]
+        up_short_proba = [array[1] for array in pred_short_proba[-10:]]
+        down_short_prob = [array[0] for array in pred_short_proba[-10:]]
+        cluster_string =  '|'.join([f"{x}" for x in list(cluster_pred[-10:])])
         # previous candle
         atr = dataframe.iloc[-1]['ATR']
         adx = dataframe.iloc[-1]['ADX']
@@ -286,7 +333,7 @@ class MT_trade_manager:
             buy_price = infor.ask
             sell_price = infor.bid
         self.spread = buy_price - sell_price
-        if atr < 0.5:  #take trade only when ATR >= 2 dollar
+        if atr < 1:  #take trade only when ATR >= 2 dollar
             return {"result" : False, "message" : f"Small ATR {atr:.3f} skip trade"}
 
         if adx < 20:  #take trade only when ATR >= 2 dollar
@@ -309,24 +356,24 @@ class MT_trade_manager:
             #if (close < ema10):
             #    return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
             self.request_buy["price"] = buy_price
-            self.request_buy["sl"] = buy_price - (1.5*guard_band) # 2 dollar please
-            self.request_buy["tp"] = buy_price + (2.5*guard_band)
+            self.request_buy["sl"] = buy_price - (2*guard_band) # 2 dollar please
+            self.request_buy["tp"] = buy_price + (3*guard_band)
             if self.simulation:
                 ID = self.GenerateID()
                 logger = Logger.Logger(f"trade_taken_simulate_{ID}.csv")
                 logger.dump_dataframe(dataframe)
-                self.order_taken.append({"ID" : ID, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                self.order_taken.append({"ID" : ID, "cluster" : cluster_string, "pred_up" : up_prob, "pred_up_short" : up_short_proba, "pred_down" : down_prob, "pred_down_short" : down_short_prob, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
             #print(txt)
-                return {"result" : True, "message" : {"ID" : ID, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
+                return {"result" : True, "message" : {"ID" : ID, "cluster" : cluster_string, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
             else:
                 result = MT5.order_send(self.request_buy)
-                #txt = f"Order status: {result}"
+                #txt = f"Order status: {result}"================================================================= fix pred to update both up and down
                 if result.comment == 'Request executed':
                     logger = Logger.Logger(f"trade_taken_{result.order}.csv")
                     logger.dump_dataframe(dataframe)
-                    self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                    self.order_taken.append({"ID" : result.order, "cluster" : cluster_string, "pred_up" : up_prob, "pred_up_short" : up_short_proba, "pred_down" : down_prob, "pred_down_short" : down_short_prob, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
-                    return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
+                    return {"result" : True, "message" : {"ID" : result.order, "cluster" : cluster_string, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
         
         validate_result = self.validate_sell(pred_short, pred, dataframe)
         message = message + "|" + validate_result["message"]
@@ -334,14 +381,14 @@ class MT_trade_manager:
             #if (close > ema10):
             #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
             self.request_sell["price"] = sell_price
-            self.request_sell["sl"] = sell_price + (1.5*guard_band) # 2 dollar please
-            self.request_sell["tp"] = sell_price - (2.5*guard_band)
+            self.request_sell["sl"] = sell_price + (2*guard_band) # 2 dollar please
+            self.request_sell["tp"] = sell_price - (3*guard_band)
             if self.simulation:
                 ID = self.GenerateID()
                 logger = Logger.Logger(f"trade_taken_simulate_{ID}.csv")
                 logger.dump_dataframe(dataframe)
-                self.order_taken.append({"ID" : ID, "Time" : self.now, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
-                return {"result" : True, "message" : {"ID" : ID, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
+                self.order_taken.append({"ID" : ID, "cluster" : cluster_string, "pred_up" : up_prob, "pred_up_short" : up_short_proba, "pred_down" : down_prob, "pred_down_short" : down_short_prob, "Time" : self.now, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                return {"result" : True, "message" : {"ID" : ID, "cluster" : cluster_string, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
 
             else:
                 result = MT5.order_send(self.request_sell)
@@ -349,9 +396,9 @@ class MT_trade_manager:
                 if result.comment == 'Request executed':
                     logger = Logger.Logger(f"trade_taken_{result.order}.csv")
                     logger.dump_dataframe(dataframe)
-                    self.order_taken.append({"ID" : result.order, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
+                    self.order_taken.append({"ID" : result.order, "cluster" : cluster_string, "pred_up" : up_prob, "pred_up_short" : up_short_proba, "pred_down" : down_prob, "pred_down_short" : down_short_prob, "Time" : self.now, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
-                    return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
+                    return {"result" : True, "message" : {"ID" : result.order, "cluster" : cluster_string, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
         return {"result" : False, "message" : f"{message}"}
     
     def trade_summary(self, now):

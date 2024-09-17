@@ -4,12 +4,12 @@ import numpy as np
 
 class IndicatorTable:
     def __init__(self):
-        #pd.options.mode.chained_assignment = None  # default='warn'
+        pd.options.mode.chained_assignment = None  # default='warn'
         self.remove_rows = 200
         self.curtain = 14
         self.roll_back = 7
-        self.signal_trigger = 0.07 # percentage of price change
-        self.quick_trigger = 0.12
+        self.signal_trigger = 0.05 # percentage of price change
+        self.quick_trigger = 0.07
         self.compare_period_long = 20
         self.compare_period_short = 2
         self.regression_sensitivity = 0.0
@@ -159,10 +159,11 @@ class IndicatorTable:
             self.input_to_model.append(EMA15_30_name)
 
         self.input_to_model = list(set(self.input_to_model))
+        self.input_to_model.sort()
 
     def AddBackWard_short(self, enable):
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
-        rolling = [2, 3, 5, 8, 13, 21]
+        rolling = [2, 3, 5, 8, 13]
         for i in rolling:
             ratio = i
             key = '_RB_short_'
@@ -183,36 +184,92 @@ class IndicatorTable:
             self.input_to_model_short.append(EMA10_30_name)
 
         self.input_to_model_short = list(set(self.input_to_model_short))
+        self.input_to_model_short.sort()
     
     def ReuseTable(self, table):
         self.table = table
         self.AddBackWard(False)
         self.AddBackWard_short(False)
+
     def ExportData(self):
         # remove first 200 rows, unused
         self.table = self.table.iloc[self.remove_rows:, :]
         return self.table[self.input_to_model]
 
     def ExportData_short(self):
-        
         # remove first 200 rows, unused
         return self.table[self.input_to_model_short]
 
-    def ExportData_simulate(self):
+    def Init_cluster(self):
+        temp = self.input_to_model
+        temp.extend(self.input_to_model_short)
+        temp.sort()
+        self.input_to_cluster = temp
+
+    def ExportData_cluster(self, pred_proba, pred_short_proba):
+        #first row only
+        last_row = self.table[self.input_to_cluster].iloc[[-1]]
+        temp = self.input_to_cluster
+        up_prob = [array[1] for array in pred_proba]
+        up_short_proba = [array[1] for array in pred_short_proba]
+        down_prob = [array[0] for array in pred_proba]
+        down_short_prob = [array[0] for array in pred_short_proba]
+
+        for i in range(len(pred_proba)):
+            name_up = "pred_up_" + str(i)
+            name_up_short = "pred_up_short_" + str(i)
+            name_down = "pred_down_" + str(i)
+            name_down_short = "pred_down_short_" + str(i)
+            temp.append(name_up)
+            temp.append(name_up_short)
+            temp.append(name_down)
+            temp.append(name_down_short)
+
+            last_row[name_up] = up_prob[i]
+            last_row[name_up_short] = up_short_proba[i]
+            last_row[name_down] = down_prob[i]
+            last_row[name_down_short] = down_short_prob[i]
+        temp.sort()
+
+        #last_row[temp].to_csv("TESTT.csv")
+        return last_row[temp]
+
+    def ExportData_cluster_MG(self):
+        return self.table[self.input_to_cluster]
+
+    def Init_cluster_MG(self, count):
+        temp = self.input_to_model
+        temp.extend(self.input_to_model_short)
+        for i in range(count):
+            name_up = "pred_up_" + str(i)
+            name_up_short = "pred_up_short_" + str(i)
+            name_down = "pred_down_" + str(i)
+            name_down_short = "pred_down_short_" + str(i)
+            
+            temp.append(name_up)
+            temp.append(name_up_short)
+            temp.append(name_down)
+            temp.append(name_down_short)
+        temp.sort()
+        self.input_to_cluster = temp
+
+    def ExportData_simulate(self, addin_list):
         # remove first 200 rows, unused
         temp = self.input_to_model
         temp.extend(self.input_to_model_short)
-        temp.insert(0, 'trade_result')
-        temp.insert(0, 'trade_flag')
-        temp.insert(0, 'ATR')
-        temp.insert(0, 'EMA30')
-        temp.insert(0, 'EMA20')
-        temp.insert(0, 'EMA10')
-        temp.insert(0, 'close')
-        temp.insert(0, 'low')
-        temp.insert(0, 'high')
-        temp.insert(0, 'open')
-        temp.insert(0, 'time')
+        temp.extend(addin_list)
+        temp.sort()
+        #temp.insert(0, 'trade_result')
+        #temp.insert(0, 'trade_flag')
+        #temp.insert(0, 'ATR')
+        #temp.insert(0, 'EMA30')
+        #temp.insert(0, 'EMA20')
+        #temp.insert(0, 'EMA10')
+        #temp.insert(0, 'close')
+        #temp.insert(0, 'low')
+        #temp.insert(0, 'high')
+        #temp.insert(0, 'open')
+        #temp.insert(0, 'time')
         self.table = self.table.iloc[self.remove_rows:, :]
         return self.table[temp]
 
