@@ -95,6 +95,12 @@ class MT_trade_manager:
                     for ind in ticks.index:
                         if (self.order_taken[i]["Type"] == "Buy"):
                             if ticks['close'][ind] + 0.4 >= self.order_taken[i]['Detail']['tp'] or ticks['high'][ind] >= self.order_taken[i]['Detail']['tp']:
+                                
+                                logger = Logger.Logger(f"trade_taken_simulate_future_{self.order_taken[i]['ID']}.csv")
+                                time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
+                                frame = simulator.OutputData(time_from_trade, time_to)
+                                logger.dump_dataframe(frame)
+
                                 self.order_taken[i]["Status"] = "Win-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['tp'] - self.order_taken[i]['Detail']['price'])
                                 self.order_taken[i]["profit"] = profit
@@ -104,6 +110,12 @@ class MT_trade_manager:
                                 break
 
                             if ticks['close'][ind] + 0.4 <= self.order_taken[i]['Detail']['sl'] or ticks['low'][ind] <= self.order_taken[i]['Detail']['sl']:
+
+                                logger = Logger.Logger(f"trade_taken_simulate_future_{self.order_taken[i]['ID']}.csv")
+                                time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
+                                frame = simulator.OutputData(time_from_trade, time_to)
+                                logger.dump_dataframe(frame)
+
                                 self.order_taken[i]["Status"] = "Lose-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['sl'] - self.order_taken[i]['Detail']['price'])
                                 self.order_taken[i]["profit"] = profit
@@ -114,6 +126,12 @@ class MT_trade_manager:
 
                         if (self.order_taken[i]["Type"] == "Sell"):
                             if ticks['close'][ind] - 0.4 <= self.order_taken[i]['Detail']['tp'] or ticks['low'][ind] <= self.order_taken[i]['Detail']['tp']:
+
+                                logger = Logger.Logger(f"trade_taken_simulate_future_{self.order_taken[i]['ID']}.csv")
+                                time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
+                                frame = simulator.OutputData(time_from_trade, time_to)
+                                logger.dump_dataframe(frame)
+
                                 self.order_taken[i]["Status"] = "Win-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp'])
                                 self.order_taken[i]["profit"] = profit
@@ -123,6 +141,12 @@ class MT_trade_manager:
                                 break
 
                             if ticks['close'][ind] - 0.4 >= self.order_taken[i]['Detail']['sl'] or ticks['high'][ind] >= self.order_taken[i]['Detail']['sl']:
+
+                                logger = Logger.Logger(f"trade_taken_simulate_future_{self.order_taken[i]['ID']}.csv")
+                                time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
+                                frame = simulator.OutputData(time_from_trade, time_to)
+                                logger.dump_dataframe(frame)
+
                                 self.order_taken[i]["Status"] = "Lose-sim"
                                 profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['sl'])
                                 self.order_taken[i]["profit"] = profit
@@ -135,7 +159,7 @@ class MT_trade_manager:
         for i in range(len(self.order_taken)):
             if (self.order_taken[i]["Status"] == "Open"):
                 if (self.order_taken[i]["Type"] == "Buy"):
-                    if (pred[-1] == 0) or (pred_short[-1] == 0):
+                    if (pred[-1] == 0) or (pred_short[-1] == 0):# or table.iloc[-1]['close'] < table.iloc[-1]['EMA30']):
                         self.request_close["type"] = MT5.ORDER_TYPE_SELL
                         self.request_close["position"] = self.order_taken[i]["ID"]
                         self.request_close["price"] = tick.ask
@@ -160,7 +184,7 @@ class MT_trade_manager:
                                 message.append(f"Successfully close order {ID} due to reversing trend")
                 
                 if (self.order_taken[i]["Type"] == "Sell"):
-                    if (pred[-1] == 1) or (pred_short[-1] == 1):
+                    if (pred[-1] == 1) or (pred_short[-1] == 1):# or table.iloc[-1]['close'] > table.iloc[-1]['EMA30']:
                         self.request_close["type"] = MT5.ORDER_TYPE_BUY
                         self.request_close["position"] = self.order_taken[i]["ID"]
                         self.request_close["price"] = tick.bid
@@ -324,8 +348,8 @@ class MT_trade_manager:
             #if (close < ema10):
             #    return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
             self.request_buy["price"] = buy_price
-            self.request_buy["sl"] = buy_price - (1.5*guard_band) # 2 dollar please
-            self.request_buy["tp"] = buy_price + (2.5*guard_band)
+            self.request_buy["sl"] = buy_price - (2*guard_band) # 2 dollar please
+            self.request_buy["tp"] = buy_price + (3*guard_band)
             if self.simulation:
                 ID = self.GenerateID()
                 logger = Logger.Logger(f"trade_taken_simulate_{ID}.csv")
@@ -341,7 +365,7 @@ class MT_trade_manager:
                     logger.dump_dataframe(dataframe)
                     self.order_taken.append({"ID" : result.order, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
-                    return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
+                    return {"result" : True, "message" : {"ID" : result.order, "Time" : self.now, "Status" : "Open","Type": "Buy", "TP": buy_price + (1.5*guard_band), "SL": buy_price - (1*guard_band)}}
         
         validate_result = self.validate_sell(pred_short, pred, dataframe)
         message = message + "|" + validate_result["message"]
@@ -349,14 +373,14 @@ class MT_trade_manager:
             #if (close > ema10):
             #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
             self.request_sell["price"] = sell_price
-            self.request_sell["sl"] = sell_price + (1.5*guard_band) # 2 dollar please
-            self.request_sell["tp"] = sell_price - (2.5*guard_band)
+            self.request_sell["sl"] = sell_price + (2*guard_band) # 2 dollar please
+            self.request_sell["tp"] = sell_price - (3*guard_band)
             if self.simulation:
                 ID = self.GenerateID()
                 logger = Logger.Logger(f"trade_taken_simulate_{ID}.csv")
                 logger.dump_dataframe(dataframe)
                 self.order_taken.append({"ID" : ID, "Time" : self.now, "Status" : "Open","Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
-                return {"result" : True, "message" : {"ID" : ID, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
+                return {"result" : True, "message" : {"ID" : ID, "Time" : self.now, "Status" : "Open","Type": "Sell", "TP": sell_price - (1.5*guard_band), "SL": sell_price + (1*guard_band)}}
 
             else:
                 result = MT5.order_send(self.request_sell)
@@ -396,6 +420,7 @@ class MT_trade_manager:
         forcelose = 0
         random = 0
         profit = 0
+        forceclose_profit = 0
         lost = 0
         for order in self.order_taken:
             if "Win" in order["Status"]:
@@ -408,6 +433,7 @@ class MT_trade_manager:
                 continue
             if "ClosedOnDM" in order["Status"]:
                 forcelose += 1
+                forceclose_profit += order["profit"]
                 continue
             random += 1
 
@@ -415,5 +441,5 @@ class MT_trade_manager:
         if total == 0:
             total = 1
         print(f"Win {win} Lose {lose} force close {forcelose} other {random} successrate {100*win/(total)}")
-        print(f"Profit {profit} lost {lost} total {profit + lost}")
+        print(f"Profit {profit} lost {lost} force close {forceclose_profit} total {profit + lost + forceclose_profit}")
         return f"Win {win} Lose {lose} force close {forcelose} other {random} successrate {100*win/(total)}\nProfit {profit} lost {lost} total {profit + lost}"
