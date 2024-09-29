@@ -2,10 +2,13 @@ from datetime import datetime
 from datetime import timedelta
 
 class Simulator:
-    def __init__(self, table, time_from, time_to, unit):
+    def __init__(self, table, time_from, time_to, unit, calculator):
         self.table = table
         self.table["trade_flag"] = 0
         self.table["trade_result"] = 0
+        
+        calculator.Calculate(self.table)
+        self.table = calculator.ExportData_simulate()
         self.calculated_table = 0
         self.time_min = time_from.timestamp()
         self.time_max = time_to.timestamp()
@@ -27,10 +30,10 @@ class Simulator:
         self.table.at[start, 'trade_result'] = result
 
     def Export(self, calculator):
-        calculator.Calculate(self.table)
-        calculated_data = calculator.ExportData_simulate()
-        calculated_data['formatted_time'] = self.table['time'].apply(self.convert_unix_time)
-        return calculated_data
+        #calculator.Calculate(self.table)
+        #calculated_data = calculator.ExportData_simulate()
+        self.table['formatted_time'] = self.table['time'].apply(self.convert_unix_time)
+        return self.table
 
     def convert_unix_time(self, unix_time):
         dt = datetime.utcfromtimestamp(unix_time)

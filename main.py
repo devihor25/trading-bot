@@ -57,14 +57,15 @@ if __name__ == "__main__":
 
     if simulation:
         sim_time_from = (noww - timedelta(days =180)).replace(hour=0, minute=0, second=0, microsecond=0)
-        sim_time_to = (noww - timedelta(days =140)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_to = (noww - timedelta(days =100)).replace(hour=0, minute=0, second=0, microsecond=0)
         table = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, sim_time_from, sim_time_to))
-        simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180)
+        simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180, IC.IndicatorTable())
         now = sim_time_from + timedelta(days =31)
         date_from = now - timedelta(days =30)
         polling_time = 0 #seconds
         suspend_time = 0 #seconds
         trade_waiting_time = 0
+
     while True:
         log_list = []
         try:
@@ -108,13 +109,13 @@ if __name__ == "__main__":
             up_rate_short = '|'.join([f"{x:.3f}" for x in list(pred_short_proba[-21:-1][:, 1])])
             down_rate_short = '|'.join([f"{x:.3f}" for x in list(pred_short_proba[-21:-1][:, 0])])
 
-            rate_string = f"long_up:{up_rate} long_down {down_rate}"
-            log_list.append(rate_string)
-            rate_string = f"short_up:{up_rate_short} short_down {down_rate_short}"
-            log_list.append(rate_string)
+            #rate_string = f"long_up:{up_rate} long_down {down_rate}"
+            #log_list.append(rate_string)
+            #rate_string = f"short_up:{up_rate_short} short_down {down_rate_short}"
+            #log_list.append(rate_string)
 
             if simulation:
-                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI_EMA5']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f}"
             else:
                 txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
