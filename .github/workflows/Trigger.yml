@@ -14,13 +14,13 @@ on:
 
   schedule:
     - cron: "0 23 * * 0-4"  # Schedule to run at 6 AM UTC+7 (11 PM UTC the previous day) from Monday to Friday
-    - cron: "0 20 * * 0-4"  # Schedule to run at 3 AM UTC+7 (8 PM UTC the previous day) from Monday to Friday
+    - cron: "0 22 * * 0-4"  # Schedule to run at 3 AM UTC+7 (8 PM UTC the previous day) from Monday to Friday
 
 jobs:
   start:
     if: github.event.inputs.action == 'start' || (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 0-4')
     runs-on: self-hosted
-    timeout-minutes: 1200
+    timeout-minutes: 1350
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
         continue-on-error: true  # Ensure the script runs even if there are errors
 
   stop:
-    if: github.event.inputs.action == 'stop' || (github.event_name == 'schedule' && github.event.schedule == '0 20 * * 0-4')
+    if: github.event.inputs.action == 'stop' || (github.event_name == 'schedule' && github.event.schedule == '0 22 * * 0-4')
     runs-on: self-hosted
     timeout-minutes: 60
     steps:

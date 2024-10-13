@@ -56,8 +56,8 @@ if __name__ == "__main__":
     simulator = None
 
     if simulation:
-        sim_time_from = (noww - timedelta(days =180)).replace(hour=0, minute=0, second=0, microsecond=0)
-        sim_time_to = (noww - timedelta(days =100)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_from = (datetime.now(utc_time) - timedelta(days =200)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_to = (datetime.now(utc_time) - timedelta(days =100)).replace(hour=0, minute=0, second=0, microsecond=0)
         table = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, sim_time_from, sim_time_to))
         simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180, IC.IndicatorTable())
         now = sim_time_from + timedelta(days =31)
@@ -88,6 +88,7 @@ if __name__ == "__main__":
             data_manager.Calculate(gold_ticks)
 
             scaler = MinMaxScaler()
+            a = data_manager.ExportData()
             normalized_data = scaler.fit_transform(data_manager.ExportData())
             normalized_data_short = scaler.fit_transform(data_manager.ExportData_short())
         
@@ -115,13 +116,13 @@ if __name__ == "__main__":
             #log_list.append(rate_string)
 
             if simulation:
-                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI_EMA5']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f}"
+                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f} BandUp: {data_manager.table.iloc[-1]['Upper Band']:.3f} BandDown: {data_manager.table.iloc[-1]['Lower Band']:.3f} Middle: {data_manager.table.iloc[-1]['Middle Band']:.3f}"
             else:
-                txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+                txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f} BandUp: {data_manager.table.iloc[-1]['Upper Band']:.3f} BandDown: {data_manager.table.iloc[-1]['Lower Band']:.3f} Middle: {data_manager.table.iloc[-1]['Middle Band']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
             #print(txt)
             
-            verify = trade_manager.verify_order_status(my_pos, history_order, pred[-21:-1], pred_short[-21:-1], simulator)
+            verify = trade_manager.verify_order_status(my_pos, history_order, pred[-21:-1], pred_short[-21:-1], simulator, data_manager.table.iloc[-200:-1])
             log_list.append(verify["message"])
             if (verify["result"]):#((len(my_pos) == 0) and (flag == False)):
                 result = trade_manager.check_for_trade(pred_short[-21:-1], pred_proba[-21:-1], pred[-21:-1], data_manager.table.iloc[-200:-1])

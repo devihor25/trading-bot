@@ -8,17 +8,17 @@ class IndicatorTable:
         self.remove_rows = 200
         self.curtain = 14
         self.roll_back = 7
-        self.signal_trigger = 0.06 # percentage of price change
+        self.signal_trigger = 0.08 # percentage of price change
         self.quick_trigger = 0.12
         self.compare_period_long = 20
-        self.compare_period_short = 0
+        self.compare_period_short = 2
         self.regression_sensitivity = 0.0
         self.key_token = "none"
-        self.input_to_model = ["RSI_EMA5",#"ADX",#"ADX",
+        self.input_to_model = ["RSI_EMA5","ADX",#"ADX",
                                "EMA15_30"]#,"EMA10_20"]
                                #"EMA10_15","EMA10_20","EMA15_20",
                                #"Slope_EMA20"]
-        self.input_to_model_short = ["EMA5_20", "Stochastic_EMA5"]
+        self.input_to_model_short = ["RSI", "Stochastic_EMA5"]
     
     def calculate_slope(self, values):
         return np.gradient(values)[-1]
@@ -87,7 +87,7 @@ class IndicatorTable:
         self.table['TR'] = np.maximum(self.table[key_high] - self.table[key_low], 
                             np.maximum(abs(self.table[key_high] - self.table[key_close].shift(1)), 
                                        abs(self.table[key_low] - self.table[key_close].shift(1))))
-        self.table['ATR'] = self.table['TR'].rolling(window=10).mean()
+        self.table['ATR'] = self.table['TR'].rolling(window=5).mean()
         self.table['RSI_EMA5'] = self.table["RSI"].ewm(span=5).mean()
         
 
@@ -113,15 +113,17 @@ class IndicatorTable:
     
         # Calculate the Average Directional Index (ADX)
         self.table['ADX'] = self.table['DX'].rolling(window=self.curtain).mean()
-        #scaler = MinMaxScaler()
-        #self.table['Smooth_price'] = self.nadaraya_watson_estimator().reshape(-1, 1).flatten()
-        #self.table['Smooth_price_upper'] = self.table['Smooth_price'] * 1.0015
-        #self.table['Smooth_price_lower'] = self.table['Smooth_price'] * 0.9985
-        #self.table["Slope_Smooth_price"] = self.table["Smooth_price"].rolling(window=5).apply(self.calculate_slope, raw=True)
+        
+        # Bollinger Bands
+        self.table['Middle Band'] = self.table['close'].rolling(window=self.curtain).mean()
+    
+        # Calculate the standard deviation
+        self.table['Standard Deviation'] = self.table['close'].rolling(window=self.curtain).std()
+    
+        # Calculate the upper and lower bands
+        self.table['Upper Band'] = self.table['Middle Band'] + (self.table['Standard Deviation'] * 1.5)
+        self.table['Lower Band'] = self.table['Middle Band'] - (self.table['Standard Deviation'] * 1.5)
 
-        #self.table['Close_NW_upper'] = self.table['close'] - self.table['Smooth_price_upper']
-        #self.table['Close_NW_lower'] = self.table['close'] - self.table['Smooth_price_lower']
-        # adding backward data
         self.AddBackWard(True)
         self.AddBackWard_short(True)
         
@@ -140,14 +142,14 @@ class IndicatorTable:
         for i in rolling:
             ratio = i
             key = '_RB_'
-            rsi_name = 'RSI_EMA5' + key + str(i)
+            rsi_name = 'RSI' + key + str(i)
             stoch_name = "Stochastic_EMA5" + key + str(i)
             #rolling_EMA50 = "Rolling_EMA50" + key + str(i)
             EMA15_30_name = "EMA15_30" + key + str(i)
             adx_name = "ADX" + key + str(i)
             
             if (enable):
-                self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
+                self.table[rsi_name] = self.table['RSI'].shift(ratio)
                 self.table[adx_name] = self.table['ADX'].shift(ratio)
                 self.table[stoch_name] = self.table['Stochastic_EMA5'].shift(ratio)
                 #self.table[rolling_EMA50] = (self.table['EMA30'] - self.table['EMA30'].shift(ratio))/self.table['EMA30'].shift(ratio)
@@ -163,24 +165,24 @@ class IndicatorTable:
 
     def AddBackWard_short(self, enable):
         # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181]
-        rolling = [5, 8, 13, 21]
+        rolling = [3, 5, 8, 13]
         for i in rolling:
             ratio = i
             key = '_RB_short_'
-            rsi_name = 'RSI_EMA5' + key + str(i)
+            rsi_name = 'RSI' + key + str(i)
             stoch_name = "Stochastic_EMA5" + key + str(i)
-            #rolling_EMA30 = "Rolling_EMA30" + key + str(i)
+            rolling_EMA30 = "Rolling_EMA30" + key + str(i)
             #EMA10_30_name = "EMA5_20" + key + str(i)
             
             if (enable):
-                self.table[rsi_name] = self.table['RSI_EMA5'].shift(ratio)
+                self.table[rsi_name] = self.table['RSI'].shift(ratio)
                 self.table[stoch_name] = self.table['Stochastic_EMA5'].shift(ratio)
-                #self.table[rolling_EMA30] = (self.table['EMA20'] - self.table['EMA20'].shift(ratio))/self.table['EMA20'].shift(ratio)
+                self.table[rolling_EMA30] = (self.table['EMA5'] - self.table['EMA5'].shift(ratio))/self.table['EMA5'].shift(ratio)
                 #self.table[EMA10_30_name] = self.table['EMA5_20'].shift(ratio)
             
             self.input_to_model_short.append(rsi_name)
             self.input_to_model_short.append(stoch_name)
-            #self.input_to_model_short.append(rolling_EMA30)
+            self.input_to_model_short.append(rolling_EMA30)
             #self.input_to_model_short.append(EMA10_30_name)
 
         self.input_to_model_short = list(set(self.input_to_model_short))
@@ -189,6 +191,7 @@ class IndicatorTable:
         self.table = table
         self.AddBackWard(False)
         self.AddBackWard_short(False)
+
     def ExportData(self):
         # remove first 200 rows, unused
         self.table = self.table.iloc[self.remove_rows:, :]
@@ -208,15 +211,23 @@ class IndicatorTable:
         temp.insert(0, 'ATR')
         temp.insert(0, 'EMA200')
         temp.insert(0, 'EMA100')
+        temp.insert(0, 'EMA50')
         temp.insert(0, 'EMA30')
         temp.insert(0, 'EMA20')
         temp.insert(0, 'EMA10')
+        temp.insert(0, 'EMA5')
+
+        temp.insert(0, 'Upper Band')
+        temp.insert(0, 'Lower Band')
+        temp.insert(0, 'Middle Band')
+
         temp.insert(0, 'close')
         temp.insert(0, 'low')
         temp.insert(0, 'high')
         temp.insert(0, 'open')
         temp.insert(0, 'time')
         self.table = self.table.iloc[self.remove_rows:, :]
+        #temp = list(set(temp))
         return self.table[temp]
 
     def UpdatePrediction(self, y_pred, y_pred_proba, y_pred_short):
