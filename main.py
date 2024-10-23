@@ -13,6 +13,10 @@ from sklearn.preprocessing import MinMaxScaler
 import OrderRequest as OR
 import Logger
 import Simulator
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import ttk
 
 refresh_train_data = False
 simulation = False
@@ -118,7 +122,7 @@ if __name__ == "__main__":
             if simulation:
                 txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: price: {gold_ticks.iloc[-1]['close']} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f} BandUp: {data_manager.table.iloc[-1]['Upper Band']:.3f} BandDown: {data_manager.table.iloc[-1]['Lower Band']:.3f} Middle: {data_manager.table.iloc[-1]['Middle Band']:.3f}"
             else:
-                txt = f"{(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f} BandUp: {data_manager.table.iloc[-1]['Upper Band']:.3f} BandDown: {data_manager.table.iloc[-1]['Lower Band']:.3f} Middle: {data_manager.table.iloc[-1]['Middle Band']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
+                txt = f"{now.timestamp()} {(now).strftime('%H_%M_%S-%d_%m_%Y')}: ask: {MT5.symbol_info_tick(trade_manager.trading_symbol).ask} bid:{MT5.symbol_info_tick(trade_manager.trading_symbol).bid} pred: {pred_string} pred_short: {pred_string_short} ATR: {data_manager.table.iloc[-1]['ATR']:.3f} RSI: {data_manager.table.iloc[-1]['RSI']:.3f} STOCH: {data_manager.table.iloc[-1]['Stochastic_EMA5']:.3f} BandUp: {data_manager.table.iloc[-1]['Upper Band']:.3f} BandDown: {data_manager.table.iloc[-1]['Lower Band']:.3f} Middle: {data_manager.table.iloc[-1]['Middle Band']:.3f} win: {trade_sum['win']} lose: {trade_sum['lose']}"
             log_list.append(txt)
             #print(txt)
             
@@ -150,4 +154,81 @@ if __name__ == "__main__":
                 table.to_csv("Simulation.csv")
                 print("--------DONE--------")
                 break
+    if simulation:
+        # Load the CSV file
+        df = pd.read_csv('Simulation.csv')
+        # List of columns to plot
+        columns_to_plot = [
+            'ADX', 'ADX_RB_13', 'ADX_RB_21', 'ADX_RB_34', 'ADX_RB_8', 'EMA15_30', 'EMA15_30_RB_13', 
+            'EMA15_30_RB_21', 'EMA15_30_RB_34', 'EMA15_30_RB_8', 'EMA20_100_RB_short_13', 
+            'EMA20_100_RB_short_3', 'EMA20_100_RB_short_5', 'EMA20_100_RB_short_8', 'Rolling_EMA30_RB_short_13', 
+            'Rolling_EMA30_RB_short_3', 'Rolling_EMA30_RB_short_5', 'Rolling_EMA30_RB_short_8', 'RSI', 
+            'RSI_EMA5', 'RSI_RB_short_3', 'RSI_RB_short_5', 'RSI_RB_8', 'RSI_RB_13',
+           'RSI_RB_21', 'RSI_RB_34', 'RSI_RB_short_8', 'RSI_RB_short_13', 'Stochastic_EMA5', 'Stochastic_EMA5_RB_short_3','Stochastic_EMA5_RB_short_5', 'Stochastic_EMA5_RB_8', 'Stochastic_EMA5_RB_13', 'Stochastic_EMA5_RB_21', 
+            'Stochastic_EMA5_RB_34', 'Stochastic_EMA5_RB_short_13', 
+             'Stochastic_EMA5_RB_short_8'
+        ]
+
+        df[columns_to_plot] = df[columns_to_plot].shift(1)
+        df.to_csv("Simulation_shift.csv")
+        # Filter the rows where trade_result is 1 or -1
+        filtered_df = df[df['trade_result'].isin([1, -1])]
+
+        # Create a new column that combines trade_flag and trade_result
+        filtered_df['trade_combination'] = filtered_df['trade_flag'].astype(str) + '_' + filtered_df['trade_result'].astype(str)
+
+
+
+        # Calculate the number of rows needed
+        num_columns = 5
+        num_rows = (len(columns_to_plot) + num_columns - 1) // num_columns
+
+        filtered_df[columns_to_plot] = filtered_df[columns_to_plot].shift(1)
+        # Create a figure and axis for each column
+        fig, axes = plt.subplots(nrows=num_rows, ncols=num_columns, figsize=(18, num_rows * 5))
+
+        # Flatten the axes array for easy iteration
+        axes = axes.flatten()
+
+        # Plot each column
+        for ax, column in zip(axes, columns_to_plot):
+            filtered_df.boxplot(column=column, by='trade_combination', ax=ax)
+            ax.set_title(f'Box plot of {column}')
+            ax.set_ylabel(column)
+            ax.set_xlabel('trade_combination')
+
+        # Remove the automatic titles to avoid overlap
+        plt.suptitle('')
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+
+        # Create a Tkinter window
+        root = tk.Tk()
+        root.title("Scrollable Box Plots")
+
+        # Create a canvas and a vertical scrollbar
+        canvas = tk.Canvas(root)
+        scroll_y = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
+
+        # Create a frame to hold the plots
+        frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=frame, anchor='nw')
+
+        # Add the canvas and scrollbar to the window
+        canvas.configure(yscrollcommand=scroll_y.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll_y.pack(side="right", fill="y")
+
+        # Add the figure to the Tkinter window
+        canvas_fig = FigureCanvasTkAgg(fig, master=frame)
+        canvas_fig.draw()
+        canvas_fig.get_tk_widget().pack(side="top", fill="both", expand=True)
+
+        # Update the scroll region
+        frame.update_idletasks()
+        canvas.config(scrollregion=canvas.bbox("all"))
+
+        # Start the Tkinter main loop
+        root.mainloop()
 

@@ -30,11 +30,13 @@ class MT_trade_manager:
         # buying toggler
         self.buy_toggle_1 = False
         self.buy_toggle_2 = False
+        self.buy_toggle_3 = False
         self.toggle_counter_buy = 0
 
         #selling toggler
         self.sell_toggle_1 = False
         self.sell_toggle_2 = False
+        self.sell_toggle_3 = False
         self.toggle_counter_sell = 0
 
         self.request_buy = {
@@ -107,21 +109,6 @@ class MT_trade_manager:
                     for ind in ticks.index:
                         if (self.order_taken[i]["Type"] == "Buy"):
                             if ticks.shape[0] > 0:
-                                if ticks['close'][ind] + 0.4 >= self.order_taken[i]['Detail']['tp'] or ticks['high'][ind] + 0.4 >= self.order_taken[i]['Detail']['tp']:
-
-                                    self.order_taken[i]["Status"] = "Win-sim"
-                                    profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['tp'] - self.order_taken[i]['Detail']['price'])
-                                    self.order_taken[i]["profit"] = profit
-                                    self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit}")
-                                    message.append(f"Simulation: Win result")
-                                    simulator.AddTradeFlag(time_from, time_to, 1, 1)
-                                    logger = Logger.Logger(f"trade_taken_simulate_{self.order_taken[i]['ID']}.csv")
-                                    time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
-                                    time_to_trade = time_to + timedelta(seconds=3600)
-                                    frame = simulator.OutputData(time_from_trade, time_to_trade)
-                                    logger.dump_dataframe(frame)
-                                    break
-
                                 if ticks['close'][ind] + 0.4 <= self.order_taken[i]['Detail']['sl'] or ticks['low'][ind] + 0.4 <= self.order_taken[i]['Detail']['sl']:
 
                                     self.order_taken[i]["Status"] = "Lose-sim"
@@ -140,23 +127,23 @@ class MT_trade_manager:
                                     logger.dump_dataframe(frame)
                                     break
 
-                        if (self.order_taken[i]["Type"] == "Sell"):
-                            if ticks.shape[0] > 0:
-                                if ticks['close'][ind] - 0.4 <= self.order_taken[i]['Detail']['tp'] or ticks['low'][ind] - 0.4 <= self.order_taken[i]['Detail']['tp']:
+                                if ticks['close'][ind] + 0.4 >= self.order_taken[i]['Detail']['tp'] or ticks['high'][ind] + 0.4 >= self.order_taken[i]['Detail']['tp']:
 
                                     self.order_taken[i]["Status"] = "Win-sim"
-                                    profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp'])
+                                    profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['tp'] - self.order_taken[i]['Detail']['price'])
                                     self.order_taken[i]["profit"] = profit
                                     self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit}")
                                     message.append(f"Simulation: Win result")
-                                    simulator.AddTradeFlag(time_from, time_to, -1, 1)
+                                    simulator.AddTradeFlag(time_from, time_to, 1, 1)
                                     logger = Logger.Logger(f"trade_taken_simulate_{self.order_taken[i]['ID']}.csv")
                                     time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
                                     time_to_trade = time_to + timedelta(seconds=3600)
                                     frame = simulator.OutputData(time_from_trade, time_to_trade)
                                     logger.dump_dataframe(frame)
                                     break
-
+                                
+                        if (self.order_taken[i]["Type"] == "Sell"):
+                            if ticks.shape[0] > 0:
                                 if ticks['close'][ind] - 0.4 >= self.order_taken[i]['Detail']['sl'] or ticks['high'][ind] - 0.4 >= self.order_taken[i]['Detail']['sl']:
 
                                     self.order_taken[i]["Status"] = "Lose-sim"
@@ -174,6 +161,22 @@ class MT_trade_manager:
                                     frame = simulator.OutputData(time_from_trade, time_to_trade)
                                     logger.dump_dataframe(frame)
                                     break
+
+                                if ticks['close'][ind] - 0.4 <= self.order_taken[i]['Detail']['tp'] or ticks['low'][ind] - 0.4 <= self.order_taken[i]['Detail']['tp']:
+
+                                    self.order_taken[i]["Status"] = "Win-sim"
+                                    profit = (self.lot/0.01) * (self.order_taken[i]['Detail']['price'] - self.order_taken[i]['Detail']['tp'])
+                                    self.order_taken[i]["profit"] = profit
+                                    self.logger.write_log(f"{self.order_taken[i]['Time']},{self.order_taken[i]['Time'].timestamp()},{self.order_taken[i]['ID']},{self.order_taken[i]['Type']},{self.order_taken[i]['Detail']['price']},{self.order_taken[i]['Detail']['tp']},{self.order_taken[i]['Detail']['sl']},{self.order_taken[i]['Up_rate']},{self.order_taken[i]['Down_rate']},Win-simulate,{profit}")
+                                    message.append(f"Simulation: Win result")
+                                    simulator.AddTradeFlag(time_from, time_to, -1, 1)
+                                    logger = Logger.Logger(f"trade_taken_simulate_{self.order_taken[i]['ID']}.csv")
+                                    time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
+                                    time_to_trade = time_to + timedelta(seconds=3600)
+                                    frame = simulator.OutputData(time_from_trade, time_to_trade)
+                                    logger.dump_dataframe(frame)
+                                    break
+                                
 
         tick = MT5.symbol_info_tick(self.trading_symbol)
         for i in range(len(self.order_taken)):
@@ -201,9 +204,9 @@ class MT_trade_manager:
                                 if (ticks['close'].tail(1).values[0] - self.order_taken[i]['Detail']["price"]) > 2 and self.order_taken[i]["option"] !=  "check" and self.order_taken[i]["option"] !=  "movesl":
                                     self.order_taken[i]["option"] = "check"
 
-                                if self.order_taken[i]["option"] == "check":
-                                    if ticks['low'].tail(1).values[0] < ticks['EMA5'].tail(1).values[0]:
-                                        self.order_taken[i]["option"] = "close"
+                                #if self.order_taken[i]["option"] == "check":
+                                #    if ticks['low'].tail(1).values[0] < ticks['EMA5'].tail(1).values[0]:
+                                #        self.order_taken[i]["option"] = "close"
 
                                 if self.order_taken[i]["option"] == "movesl":
                                    if ticks['low'].tail(2).values[0] < ticks['close'].tail(2).values[1]:
@@ -302,9 +305,9 @@ class MT_trade_manager:
                                 if (self.order_taken[i]['Detail']["price"] - ticks['close'].tail(1).values[0]) > 2 and self.order_taken[i]["option"] != "check" and self.order_taken[i]["option"] !=  "movesl":
                                     self.order_taken[i]["option"] = "check"
 
-                                if self.order_taken[i]["option"] == "check":
-                                    if ticks['close'].tail(1).values[0] > ticks['EMA5'].tail(1).values[0]:
-                                        self.order_taken[i]["option"] = "close"
+                                #if self.order_taken[i]["option"] == "check":
+                                #    if ticks['close'].tail(1).values[0] > ticks['EMA5'].tail(1).values[0]:
+                                #        self.order_taken[i]["option"] = "close"
 
                                 if self.order_taken[i]["option"] == "movesl":
                                     if ticks['high'].tail(2).values[0] > ticks['close'].tail(2).values[1]:
@@ -418,8 +421,10 @@ class MT_trade_manager:
         short_rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
         rsi = dataframe.iloc[-1]['RSI']
         stoch = dataframe.iloc[-1]['Stochastic_EMA5']
-        rsi_B2 = dataframe.iloc[-3]['RSI']
-        stoch_B2 = dataframe.iloc[-3]['Stochastic_EMA5']
+        rsi_3 = dataframe.iloc[-1]['RSI_RB_short_3']
+        rsi_5 = dataframe.iloc[-1]['RSI_RB_short_5']
+        rsi_8 = dataframe.iloc[-1]['RSI_RB_8']
+        rsi_list = dataframe.iloc[-10:-2]['RSI']
 
         up_band = round(dataframe.iloc[-1]['Upper Band'], 1)
         low_band = round(dataframe.iloc[-1]['Lower Band'], 1)
@@ -440,18 +445,27 @@ class MT_trade_manager:
 
         if self.buy_toggle_1 and close > low_band:# and (mid_band - close)/(mid_band - low_band) > 0.4:
             self.buy_toggle_2 = True
-            #self.toggle_counter_buy = 0
+            self.toggle_counter_buy = 0
         else:
             self.buy_toggle_2 = False
+
+        #if rsi_3 < rsi_5 < rsi_8 < rsi_13 and rsi > 0:
+        #    if (abs(rsi - rsi_3)/rsi <= 0.1):
+        #        self.buy_toggle_3 = True
+        for rate in rsi_list:
+            if rate <= 30:
+                self.buy_toggle_3 = True
+                self.toggle_counter_buy = 0
         
-        if self.buy_toggle_1 or self.buy_toggle_2:
+        if self.buy_toggle_1 or self.buy_toggle_2 or self.buy_toggle_3:
             self.toggle_counter_buy += 1
             if self.toggle_counter_buy >= 7:
                 self.buy_toggle_1 = False
                 self.buy_toggle_2 = False
+                self.buy_toggle_3 = False
                 self.toggle_counter_buy = 0
 
-        if self.buy_toggle_1 and self.buy_toggle_2:
+        if self.buy_toggle_1 and self.buy_toggle_2 and self.buy_toggle_3:
 
             #filterList = ["0|1|0|1", "1|0|1|0", "0|0"]
             #for filt in filterList:
@@ -473,33 +487,36 @@ class MT_trade_manager:
             #if rsi < 40:
             #    return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} weak, waiting to get stronger]"}
 
-            if "1|1" not in rate or not rate.endswith("1|1"):
-                return {"result" : False, "message" : f"validate_buy [skip - short rate {rate} does not contain buy signal]"}
+            #if "1|1" not in rate or not rate.endswith("1|1"):
+            #    return {"result" : False, "message" : f"validate_buy [skip - short rate {rate} does not contain buy signal]"}
 
             #if ("0|1|1" in short_rate and pred_short[-1] == 1):# and (pred_short[-2] == 1)):
             #    return {"result" : True, "message" : ""}
 
             # reverse 
-            if "1|1" not in short_rate or not short_rate.endswith("1|1"):
-                return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain buy signal]"}
+            #if "1|1" not in short_rate or not short_rate.endswith("1|1"):
+            #    return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain buy signal]"}
 
             #if ("0|1|1" in short_rate and pred_short[-1] == 1):# and (pred_short[-2] == 1)):
             #    return {"result" : True, "message" : ""}   
-            if 40 <= rsi <= 60 and 40 <= stoch <= 60: #> stoch_B2 and rsi < 60:
+            if 45 <= rsi <= 55 and 30 <= stoch <= 50: #> stoch_B2 and rsi < 60:
                 self.buy_toggle_1 = False
                 self.buy_toggle_2 = False
+                self.buy_toggle_3 = False
                 self.toggle_counter_buy = 0
                 return {"result" : True, "message" : ""}
 
-        return {"result" : False, "message" : f"validate_buy [no matching condition {rsi} {rsi_B2} {stoch} {stoch_B2} {self.buy_toggle_1} {self.buy_toggle_2}]"}
+        return {"result" : False, "message" : f"validate_buy [no matching condition {rsi} {stoch} {self.buy_toggle_1} {self.buy_toggle_2}]"}
 
     def validate_sell(self, pred_short, pred, dataframe):
         rate = '|'.join(f"{x}" for x in list(pred[-10:]))
         short_rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
         rsi = dataframe.iloc[-1]['RSI']
         stoch = dataframe.iloc[-1]['Stochastic_EMA5']
-        rsi_B2 = dataframe.iloc[-3]['RSI']
-        stoch_B2 = dataframe.iloc[-3]['Stochastic_EMA5']
+        rsi_3 = dataframe.iloc[-1]['RSI_RB_short_3']
+        rsi_5 = dataframe.iloc[-1]['RSI_RB_short_5']
+        rsi_8 = dataframe.iloc[-1]['RSI_RB_8']
+        rsi_list = dataframe.iloc[-10:-2]['RSI']
 
         up_band = round(dataframe.iloc[-1]['Upper Band'], 1)
         low_band = round(dataframe.iloc[-1]['Lower Band'], 1)
@@ -520,18 +537,28 @@ class MT_trade_manager:
 
         if self.sell_toggle_1 and close < up_band:# and (close - mid_band)/(up_band - mid_band) > 0.4:
             self.sell_toggle_2 = True
-            #self.toggle_counter_sell = 0
+            self.toggle_counter_sell = 0
         else:
             self.sell_toggle_2 = False
+
+        for rate in rsi_list:
+            if rate <= 30:
+                self.sell_toggle_3 = True
+                self.toggle_counter_sell = 0
+
+        #if rsi_3 > rsi_5 > rsi_8 > rsi_13 and rsi > 0:
+        #    if (abs(rsi - rsi_3)/rsi <= 0.1):
+        #        self.sell_toggle_3 = True
         
-        if self.sell_toggle_1 or self.sell_toggle_2:
+        if self.sell_toggle_1 or self.sell_toggle_2 or self.sell_toggle_3:
             self.toggle_counter_sell += 1
             if self.toggle_counter_sell >= 7:
                 self.sell_toggle_1 = False
                 self.sell_toggle_2 = False
+                self.sell_toggle_3 = False
                 self.toggle_counter_sell = 0
 
-        if self.sell_toggle_1 and self.sell_toggle_2:
+        if self.sell_toggle_1 and self.sell_toggle_2 and self.sell_toggle_3:
             #filterList = ["0|1|0|1", "1|0|1|0", "1|1"]
             #for filt in filterList:
             #    if filt in rate:
@@ -552,25 +579,26 @@ class MT_trade_manager:
             #if rsi > 60:
             #    return {"result" : False, "message" : f"validate_buy [skip - rsi {rsi} strong, waiting to get weaker]"}
 
-            if "0|0" not in rate or not rate.endswith("0|0"):
-                return {"result" : False, "message" : f"validate_sell [skip - short rate {rate} does not contain sell signal]"}
+            #if "0|0" not in rate or not rate.endswith("0|0"):
+            #    return {"result" : False, "message" : f"validate_sell [skip - short rate {rate} does not contain sell signal]"}
 
             #if ("1|0|0" in short_rate and pred_short[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
             #    return {"result" : True, "message" : ""}
 
-            if "0|0" not in short_rate or not short_rate.endswith("0|0"):
-                return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain sell signal]"}
+            #if "0|0" not in short_rate or not short_rate.endswith("0|0"):
+            #    return {"result" : False, "message" : f"validate_buy [skip - short rate {short_rate} does not contain sell signal]"}
 
             #if ("1|0|0" in short_rate and pred_short[-1] == 0):# and (pred_short[-2] == 0) and (rsi < 40)):
             #    return {"result" : True, "message" : ""}
 
-            if 40 <= rsi <= 60 and 40 <= stoch <= 60:# and rsi > 40:
+            if 45 <= rsi <= 55 and 50 <= stoch <= 70:# and rsi > 40:
                 self.sell_toggle_1 = False
                 self.sell_toggle_2 = False
+                self.sell_toggle_3 = False
                 self.toggle_counter_sell = 0
                 return {"result" : True, "message" : ""}
 
-        return {"result" : False, "message" : f"validate_sell [no matching condition {rsi} {rsi_B2} {stoch} {stoch_B2} {self.sell_toggle_1} {self.sell_toggle_2}]"}
+        return {"result" : False, "message" : f"validate_sell [no matching condition {rsi} {stoch} {self.sell_toggle_1} {self.sell_toggle_2}]"}
 
     def check_for_trade(self, pred_short, pred_proba, pred, dataframe):
         infor = MT5.symbol_info_tick(self.trading_symbol)
@@ -604,8 +632,8 @@ class MT_trade_manager:
         guard_band = min(5*atr, 10, gap_band)
         guard_band_sl = min(3*atr, 7, 0.6*gap_band)
         
-        up_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 1])])
-        down_rate = '|'.join([f"{x:.3f}" for x in list(pred_proba[-10:][:, 0])])
+        up_rate = '|'.join([f"{x:.3f}" for x in list(pred[-21:-1])])
+        down_rate = '|'.join([f"{x:.3f}" for x in list(pred_short[-21:-1])])
 
         validate_result = self.validate_buy(pred_short, pred, dataframe)
         message = validate_result["message"]
@@ -637,6 +665,7 @@ class MT_trade_manager:
         if (validate_result["result"]):
             #if (close > ema10):
             #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
+
             self.request_sell["price"] = sell_price
             self.request_sell["sl"] = sell_price + (guard_band_sl) # 2 dollar please
             self.request_sell["tp"] = sell_price - guard_band

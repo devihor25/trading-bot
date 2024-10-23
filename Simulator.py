@@ -25,8 +25,8 @@ class Simulator:
         return self.table.iloc[start:end]
 
     def AddTradeFlag (self, time_from, time_to, key, result):
-        start = self.find_index_greater_than(time_from.timestamp())
-        end = self.find_index_greater_than(time_to.timestamp())
+        start = self.find_index_greater_than(time_from.timestamp()) + 200
+        end = self.find_index_greater_than(time_to.timestamp()) +  200
         #actual = '|'.join(f"{x}" for x in list(self.table['time'][-5:]))
         #print(f"start: {start} end: {end} max: {self.time_max} actual max:{actual} from: {time_from.timestamp()} to: {time_to.timestamp()}")
         self.table.loc[start:end, 'trade_flag'] = key
