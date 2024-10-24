@@ -18,7 +18,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import ttk
 
-refresh_train_data = False
+refresh_train_data = True
 simulation = False
 
 polling_time = 120 #seconds
