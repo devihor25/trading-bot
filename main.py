@@ -15,10 +15,11 @@ import Logger
 import Simulator
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.widgets import Slider
 import tkinter as tk
 from tkinter import ttk
 
-refresh_train_data = True
+refresh_train_data = False
 simulation = False
 
 polling_time = 120 #seconds
@@ -60,11 +61,15 @@ if __name__ == "__main__":
     simulator = None
 
     if simulation:
-        sim_time_from = (datetime.now(utc_time) - timedelta(days =200)).replace(hour=0, minute=0, second=0, microsecond=0)
-        sim_time_to = (datetime.now(utc_time) - timedelta(days =100)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_from = (datetime.now(utc_time) - timedelta(days =100)).replace(hour=0, minute=0, second=0, microsecond=0)
+        #sim_time_to = (datetime.now(utc_time) - timedelta(days =0)).replace(hour=0, minute=0, second=0, microsecond=0)
+        sim_time_to = now = datetime.now(utc_time) + timedelta(hours=7)
         table = pd.DataFrame(MT5.copy_rates_range(trade_manager.trading_symbol, MT5.TIMEFRAME_M3, sim_time_from, sim_time_to))
         simulator = Simulator.Simulator(table, sim_time_from, sim_time_to, 180, IC.IndicatorTable())
         now = sim_time_from + timedelta(days =31)
+        start_point = now
+        duration = sim_time_to.timestamp() - start_point.timestamp()
+        counter = 0
         date_from = now - timedelta(days =30)
         polling_time = 0 #seconds
         suspend_time = 0 #seconds
@@ -147,7 +152,13 @@ if __name__ == "__main__":
         
         time.sleep(polling_time)
         if simulation:
+            counter = counter + 1
+            if counter > 100:
+                completion = now.timestamp() - start_point.timestamp()
+                print(f"\rCompletion: {(completion/duration) * 100:.2f}%", end="")
+                counter = 0
             if simulator.end_flag:
+                print()
                 table = simulator.Export(IC.IndicatorTable())
                 summ = trade_manager.Simulation_result()
                 logger.write_log(summ)
@@ -156,7 +167,99 @@ if __name__ == "__main__":
                 break
     if simulation:
         # Load the CSV file
-        df = pd.read_csv('Simulation.csv')
+        df = pd.read_csv('Simulation.csv').iloc[5000:, :]
+
+        simulate_collumns = ['time', 'close', 'Lower Band', 'Upper Band', 'EMA30', 'EMA50' ]
+        # Initial plot
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, gridspec_kw={'height_ratios': [3, 1, 1, 1]}, figsize=(10, 12))
+        plt.subplots_adjust(left=0.1, bottom=0.25)
+
+        # Main plot
+        l1, = ax1.plot(df['time'], df['close'], label='close')
+        l2, = ax1.plot(df['time'], df['Lower Band'], label='Lower Band')
+        l3, = ax1.plot(df['time'], df['Upper Band'], label='Upper Band')
+        l4, = ax1.plot(df['time'], df['EMA30'], label='EMA30')
+        l5, = ax1.plot(df['time'], df['EMA50'], label='EMA50')
+        ln, = ax1.plot(df['time'], df['EMA20'], label='EMA20')
+
+        ax1.set_xlabel('time')
+        ax1.set_ylabel('Values')
+        ax1.set_title('Line Chart with Multiple Lines')
+        ax1.legend()
+        ax1.grid(True)
+
+        # RSI plot
+        l6, = ax2.plot(df['time'], df['RSI'], label='RSI', color='purple')
+        l9, = ax2.plot(df['time'], df['Stochastic_EMA5'], label='Stochastic', color='orange')  # Added line for stoch
+        ax2.axhline(y=70, color='r')
+        ax2.axhline(y=30, color='r')
+        ax2.set_xlabel('time')
+        ax2.set_ylabel('RSI')
+        ax2.legend()
+
+        # Trade flag plot
+        l7, = ax3.plot(df['time'], df['trade_flag'], label='trade_flag', color='green')
+        ax3.set_xlabel('time')
+        ax3.set_ylabel('Trade Flag')
+        ax3.legend()
+
+        # Trade result plot
+        l8, = ax4.plot(df['time'], df['trade_result'], label='trade_result', color='blue')
+        ax4.set_xlabel('time')
+        ax4.set_ylabel('Trade Result')
+        ax4.legend()
+
+        # Slider axes
+        axcolor = 'lightgoldenrodyellow'
+        ax_start = plt.axes([0.1, 0.1, 0.65, 0.03], facecolor=axcolor)
+        ax_end = plt.axes([0.1, 0.15, 0.65, 0.03], facecolor=axcolor)
+
+        # Sliders
+        start_slider = Slider(ax_start, 'Start', 0, len(df)-1, valinit=0, valstep=1)
+        end_slider = Slider(ax_end, 'End', 0, len(df)-1, valinit=len(df)-1, valstep=1)
+
+        # Update function
+        def update(val):
+            start = int(start_slider.val)
+            end = int(end_slider.val)
+            l1.set_xdata(df['time'][start:end])
+            l1.set_ydata(df['close'][start:end])
+            l2.set_xdata(df['time'][start:end])
+            l2.set_ydata(df['Lower Band'][start:end])
+            l3.set_xdata(df['time'][start:end])
+            l3.set_ydata(df['Upper Band'][start:end])
+            l4.set_xdata(df['time'][start:end])
+            l4.set_ydata(df['EMA30'][start:end])
+            l5.set_xdata(df['time'][start:end])
+            l5.set_ydata(df['EMA50'][start:end])
+            ln.set_xdata(df['time'][start:end])
+            ln.set_ydata(df['EMA20'][start:end])
+            l6.set_xdata(df['time'][start:end])
+            l6.set_ydata(df['RSI'][start:end])
+            l9.set_xdata(df['time'][start:end])  # Update for stoch
+            l9.set_ydata(df['Stochastic_EMA5'][start:end])  # Update for stoch
+            l7.set_xdata(df['time'][start:end])
+            l7.set_ydata(df['trade_flag'][start:end])
+            l8.set_xdata(df['time'][start:end])
+            l8.set_ydata(df['trade_result'][start:end])
+            ax1.relim()
+            ax1.autoscale_view()
+            ax2.relim()
+            ax2.autoscale_view()
+            ax3.relim()
+            ax3.autoscale_view()
+            ax4.relim()
+            ax4.autoscale_view()
+            fig.canvas.draw_idle()
+
+        # Connect sliders to update function
+        start_slider.on_changed(update)
+        end_slider.on_changed(update)
+
+        plt.show()
+
+        
+
         # List of columns to plot
         columns_to_plot = [
             'ADX', 'ADX_RB_13', 'ADX_RB_21', 'ADX_RB_34', 'ADX_RB_8', 'EMA15_30', 'EMA15_30_RB_13', 
@@ -177,6 +280,7 @@ if __name__ == "__main__":
         # Create a new column that combines trade_flag and trade_result
         filtered_df['trade_combination'] = filtered_df['trade_flag'].astype(str) + '_' + filtered_df['trade_result'].astype(str)
 
+        
 
 
         # Calculate the number of rows needed

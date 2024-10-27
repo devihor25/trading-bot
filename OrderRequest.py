@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from dataclasses import asdict
 import MetaTrader5 as MT5
 from datetime import datetime
@@ -195,7 +196,7 @@ class MT_trade_manager:
                             time_from = self.order_taken[i]["Time"]
                             ticks = simulator.OutputData(time_from, time_to)
                             if ticks.shape[0] > 2:
-                                if (ticks['close'].tail(1).values[0] - self.order_taken[i]['Detail']["price"])/(abs(self.order_taken[i]['Detail']["price"] - self.order_taken[i]['Detail']["tp"])) >= 0.8 and not self.order_taken[i]["option"] == "movesl":
+                                if (ticks['close'].tail(1).values[0] - self.order_taken[i]['Detail']["price"])/(abs(self.order_taken[i]['Detail']["price"] - self.order_taken[i]['Detail']["tp"])) >= 0.7 and not self.order_taken[i]["option"] == "movesl":
                                     ID = self.order_taken[i]["ID"]
                                     message.append(f"successfully modifying sl of order {ID} from {self.order_taken[i]['Detail']['sl']} to {self.order_taken[i]['Detail']['price']}")
                                     self.order_taken[i]["option"] = "movesl"
@@ -275,6 +276,7 @@ class MT_trade_manager:
                                     time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
                                     time_to_trade = time_to - timedelta(seconds=1000)
                                     frame = simulator.OutputData(time_from_trade, time_to_trade)
+                                    simulator.AddTradeFlag(time_from, time_to, 1, 1)
 
                             else:
                                 self.request_close["type"] = MT5.ORDER_TYPE_SELL
@@ -296,7 +298,7 @@ class MT_trade_manager:
                             time_from = self.order_taken[i]["Time"]
                             ticks = simulator.OutputData(time_from, time_to)
                             if ticks.shape[0] > 2:
-                                if (self.order_taken[i]['Detail']["price"] - ticks['close'].tail(1).values[0])/(abs(self.order_taken[i]['Detail']["price"] - self.order_taken[i]['Detail']["tp"])) >= 0.8 and not self.order_taken[i]["option"] == "movesl":
+                                if (self.order_taken[i]['Detail']["price"] - ticks['close'].tail(1).values[0])/(abs(self.order_taken[i]['Detail']["price"] - self.order_taken[i]['Detail']["tp"])) >= 0.7 and not self.order_taken[i]["option"] == "movesl":
                                     ID = self.order_taken[i]["ID"]
                                     message.append(f"Successfully modifying sl of order {ID} from {self.order_taken[i]['Detail']['sl']} to {self.order_taken[i]['Detail']['price']}")
                                     self.order_taken[i]["option"] = "movesl"
@@ -373,6 +375,7 @@ class MT_trade_manager:
                                     time_from_trade = self.order_taken[i]["Time"] - timedelta(seconds=3600)
                                     time_to_trade = time_to - timedelta(seconds=1000)
                                     frame = simulator.OutputData(time_from_trade, time_to_trade)
+                                    simulator.AddTradeFlag(time_from_trade, time_to_trade, -1, 1)
                             else:
                                 self.request_close["type"] = MT5.ORDER_TYPE_BUY
                                 self.request_close["position"] = self.order_taken[i]["ID"]
@@ -416,7 +419,9 @@ class MT_trade_manager:
                 #return True
         return {"result" : True, "message" : "|".join(message)}
 
-    def validate_buy(self, pred_short, pred, dataframe):
+    def validate_buy(self, pred_short, pred, dataframe, option = None):
+        if option:
+            return {"result" : False, "message" : "validate_sell [skip option]"}
         rate = '|'.join(f"{x}" for x in list(pred[-10:]))
         short_rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
         rsi = dataframe.iloc[-1]['RSI']
@@ -424,7 +429,7 @@ class MT_trade_manager:
         rsi_3 = dataframe.iloc[-1]['RSI_RB_short_3']
         rsi_5 = dataframe.iloc[-1]['RSI_RB_short_5']
         rsi_8 = dataframe.iloc[-1]['RSI_RB_8']
-        rsi_list = dataframe.iloc[-10:-2]['RSI']
+        rsi_list = dataframe.iloc[-10:]['RSI']
 
         up_band = round(dataframe.iloc[-1]['Upper Band'], 1)
         low_band = round(dataframe.iloc[-1]['Lower Band'], 1)
@@ -438,14 +443,14 @@ class MT_trade_manager:
         #if stoch < 30:
         #    self.buy_toggle_2 = True
         #    self.toggle_counter_buy = 0
-
-        if close <= low_band:
+        gap = round((low_band - close), 1)
+        if gap >= 0.1:
             self.buy_toggle_1 = True
             self.toggle_counter_buy = 0
 
         if self.buy_toggle_1 and close > low_band:# and (mid_band - close)/(mid_band - low_band) > 0.4:
             self.buy_toggle_2 = True
-            self.toggle_counter_buy = 0
+            #self.toggle_counter_buy = 0
         else:
             self.buy_toggle_2 = False
 
@@ -453,13 +458,15 @@ class MT_trade_manager:
         #    if (abs(rsi - rsi_3)/rsi <= 0.1):
         #        self.buy_toggle_3 = True
         for rate in rsi_list:
-            if rate <= 30:
+            if rate <= 32:
                 self.buy_toggle_3 = True
-                self.toggle_counter_buy = 0
+                #self.toggle_counter_buy = 0
+        if rsi <= 32:
+            self.toggle_counter_buy = 0
         
         if self.buy_toggle_1 or self.buy_toggle_2 or self.buy_toggle_3:
             self.toggle_counter_buy += 1
-            if self.toggle_counter_buy >= 7:
+            if self.toggle_counter_buy >= 10:
                 self.buy_toggle_1 = False
                 self.buy_toggle_2 = False
                 self.buy_toggle_3 = False
@@ -506,9 +513,11 @@ class MT_trade_manager:
                 self.toggle_counter_buy = 0
                 return {"result" : True, "message" : ""}
 
-        return {"result" : False, "message" : f"validate_buy [no matching condition {rsi} {stoch} {self.buy_toggle_1} {self.buy_toggle_2}]"}
+        return {"result" : False, "message" : f"validate_buy [no matching condition {rsi} {stoch} {self.buy_toggle_1} {self.buy_toggle_2} {self.buy_toggle_3}]"}
 
-    def validate_sell(self, pred_short, pred, dataframe):
+    def validate_sell(self, pred_short, pred, dataframe, option = None):
+        if option:
+            return {"result" : False, "message" : "validate_sell [skip option]"}
         rate = '|'.join(f"{x}" for x in list(pred[-10:]))
         short_rate = '|'.join(f"{x}" for x in list(pred_short[-10:]))
         rsi = dataframe.iloc[-1]['RSI']
@@ -516,7 +525,7 @@ class MT_trade_manager:
         rsi_3 = dataframe.iloc[-1]['RSI_RB_short_3']
         rsi_5 = dataframe.iloc[-1]['RSI_RB_short_5']
         rsi_8 = dataframe.iloc[-1]['RSI_RB_8']
-        rsi_list = dataframe.iloc[-10:-2]['RSI']
+        rsi_list = dataframe.iloc[-10:]['RSI']
 
         up_band = round(dataframe.iloc[-1]['Upper Band'], 1)
         low_band = round(dataframe.iloc[-1]['Lower Band'], 1)
@@ -530,21 +539,23 @@ class MT_trade_manager:
         #if stoch > 70:
         #    self.sell_toggle_2 = True
         #    self.toggle_counter_sell = 0
-
-        if close >= up_band:
+        gap = round((close - up_band), 1)
+        if gap >= 0.1:
             self.sell_toggle_1 = True
             self.toggle_counter_sell = 0
 
         if self.sell_toggle_1 and close < up_band:# and (close - mid_band)/(up_band - mid_band) > 0.4:
             self.sell_toggle_2 = True
-            self.toggle_counter_sell = 0
+            #self.toggle_counter_sell = 0
         else:
             self.sell_toggle_2 = False
 
         for rate in rsi_list:
-            if rate <= 30:
+            if rate >= 68:
                 self.sell_toggle_3 = True
-                self.toggle_counter_sell = 0
+                #self.toggle_counter_sell = 0
+        if rsi >= 68:
+            self.toggle_counter_sell = 0
 
         #if rsi_3 > rsi_5 > rsi_8 > rsi_13 and rsi > 0:
         #    if (abs(rsi - rsi_3)/rsi <= 0.1):
@@ -552,7 +563,7 @@ class MT_trade_manager:
         
         if self.sell_toggle_1 or self.sell_toggle_2 or self.sell_toggle_3:
             self.toggle_counter_sell += 1
-            if self.toggle_counter_sell >= 7:
+            if self.toggle_counter_sell >= 10:
                 self.sell_toggle_1 = False
                 self.sell_toggle_2 = False
                 self.sell_toggle_3 = False
@@ -598,9 +609,10 @@ class MT_trade_manager:
                 self.toggle_counter_sell = 0
                 return {"result" : True, "message" : ""}
 
-        return {"result" : False, "message" : f"validate_sell [no matching condition {rsi} {stoch} {self.sell_toggle_1} {self.sell_toggle_2}]"}
+        return {"result" : False, "message" : f"validate_sell [no matching condition {rsi} {stoch} {self.sell_toggle_1} {self.sell_toggle_2} {self.sell_toggle_3}]"}
 
     def check_for_trade(self, pred_short, pred_proba, pred, dataframe):
+
         infor = MT5.symbol_info_tick(self.trading_symbol)
         # previous candle
         atr = dataframe.iloc[-1]['ATR']
@@ -608,6 +620,22 @@ class MT_trade_manager:
         up_band = dataframe.iloc[-1]['Upper Band']
         low_band = dataframe.iloc[-1]['Lower Band']
         gap_band = abs(up_band - low_band)
+        close = dataframe.iloc[-1]['close']
+
+        last_20 = dataframe[['close', 'EMA10']].iloc[-21:-1]
+        difference = (last_20['close'] - last_20['EMA10']).tolist()
+        positive_count = sum(1 for x in difference if x > 0)
+        negative_count = sum(1 for x in difference if x < 0)
+
+        if (positive_count - negative_count) > 5:
+            buy_preference = True
+            sell_preference = False
+        elif (negative_count - positive_count) > 5:
+            buy_preference = False
+            sell_preference = True
+        else:
+            buy_preference = False
+            sell_preference = False
 
         if self.simulation:
             buy_price = dataframe.iloc[-1]['close']
@@ -616,6 +644,8 @@ class MT_trade_manager:
             buy_price = infor.ask
             sell_price = infor.bid
         self.spread = buy_price - sell_price
+        buy_preference = None
+        sell_preference = None
         #if atr < 0.5:  #take trade only when ATR >= 2 dollar
         #    return {"result" : False, "message" : f"Small ATR {atr:.3f} skip trade"}
 
@@ -632,14 +662,16 @@ class MT_trade_manager:
         guard_band = min(5*atr, 10, gap_band)
         guard_band_sl = min(3*atr, 7, 0.6*gap_band)
         
-        up_rate = '|'.join([f"{x:.3f}" for x in list(pred[-21:-1])])
-        down_rate = '|'.join([f"{x:.3f}" for x in list(pred_short[-21:-1])])
+        up_rate = atr#'|'.join([f"{x:.3f}" for x in list(pred[-21:-1])])
+        down_rate = f"{positive_count}|{negative_count}"#'|'.join([f"{x:.3f}" for x in list(pred_short[-21:-1])])
 
-        validate_result = self.validate_buy(pred_short, pred, dataframe)
+        validate_result = self.validate_buy(pred_short, pred, dataframe, buy_preference)
         message = validate_result["message"]
         if (validate_result["result"]):
             #if (close < ema10):
             #    return {"result" : False, "message" : f"Enter buy but close price [{close}] < ema10 [{ema10}]"}
+            #guard_band = min(5*atr, 10, abs(close - up_band))
+            #guard_band_sl = min(3*atr, 7, 0.6*guard_band)
             self.request_buy["price"] = buy_price
             self.request_buy["sl"] = buy_price - (guard_band_sl) # 2 dollar please
             self.request_buy["tp"] = buy_price + (guard_band)
@@ -649,7 +681,7 @@ class MT_trade_manager:
                 #logger.dump_dataframe(dataframe)
                 self.order_taken.append({"ID" : ID, "duration" : 100, "free_drive" : 20, "option" : None, "profit" : 0, "Time" : self.now, "Status" : "Open","Type": "Buy", "Detail" : self.request_buy, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
             #print(txt)
-                return {"result" : True, "message" : {"ID" : ID, "Status" : "Open","Type": "Buy", "TP": buy_price + guard_band, "SL": buy_price - guard_band_sl, "Price": buy_price}}
+                return {"result" : True, "message" : {"ID" : ID,"Time" : self.now, "Status" : "Open","Type": "Buy", "TP": buy_price + guard_band, "SL": buy_price - guard_band_sl, "Price": buy_price}}
             else:
                 result = MT5.order_send(self.request_buy)
                 #txt = f"Order status: {result}"
@@ -660,12 +692,13 @@ class MT_trade_manager:
                 #print(txt)
                     return {"result" : True, "message" : {"ID" : result.order, "Time" : self.now, "Status" : "Open","Type": "Buy", "TP": buy_price + guard_band, "SL": buy_price - guard_band_sl, "Price": buy_price}}
         
-        validate_result = self.validate_sell(pred_short, pred, dataframe)
+        validate_result = self.validate_sell(pred_short, pred, dataframe, sell_preference)
         message = message + "|" + validate_result["message"]
         if (validate_result["result"]):
             #if (close > ema10):
             #    return {"result" : False, "message" : f"Enter sell but close price [{close}] > ema10 [{ema10}]"}
-
+            #guard_band = min(5*atr, 10, abs(close - up_band))
+            #guard_band_sl = min(3*atr, 7, 0.6*guard_band)
             self.request_sell["price"] = sell_price
             self.request_sell["sl"] = sell_price + (guard_band_sl) # 2 dollar please
             self.request_sell["tp"] = sell_price - guard_band
@@ -684,7 +717,7 @@ class MT_trade_manager:
                     logger.dump_dataframe(dataframe)
                     self.order_taken.append({"ID" : result.order, "duration" : 100, "free_drive" : 20, "option" : None, "Time" : self.now, "Status" : "Open", "Type": "Sell", "Detail" : self.request_sell, "Up_rate" : {up_rate}, "Down_rate" : {down_rate}})
                 #print(txt)
-                    return {"result" : True, "message" : {"ID" : result.order, "Status" : "Open","Type": "Sell", "TP": sell_price - guard_band, "SL": sell_price + guard_band_sl, "Price": sell_price}}
+                    return {"result" : True, "message" : {"ID" : result.order,"Time" : self.now, "Status" : "Open","Type": "Sell", "TP": sell_price - guard_band, "SL": sell_price + guard_band_sl, "Price": sell_price}}
         return {"result" : False, "message" : f"{message}"}
     
     def trade_summary(self, now):
