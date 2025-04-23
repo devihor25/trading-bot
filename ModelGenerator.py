@@ -83,7 +83,7 @@ def GenerateModel(refresh_train_data):
 
         test_data_manager.UpdatePrediction(y_pred, y_pred_proba, y_pred_short)
     
-        output = test_data_manager.table.iloc[-1500:, :]
+        output = test_data_manager.table.iloc[-1000:, :]
         output['formatted_time'] = output['time'].apply(convert_unix_time)
         logger = Logger.Logger(sample_path)
         logger.dump_dataframe(output)
