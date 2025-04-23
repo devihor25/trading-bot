@@ -61,6 +61,3 @@ When in simulation mode, results are saved to `Simulation.csv` for further analy
 
 ## License
 This project is for leisure and educational purposes. You are free to use and modify it. The provided account is a demo account on MT5 platform, and you can create your own demo account for testing.
-
-## Contact
-Feel free to contact via email for any questions or suggestions: bincu008@gmail.com
